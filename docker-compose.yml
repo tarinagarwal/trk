@@ -25,10 +25,6 @@ services:
       - REDIS_URL=redis://trk-redis:6379
       - PORT=3001
       - DATABASE_URL=file:/app/prisma/dev.db
-      - RPC_URL=http://host.docker.internal:8545
-      - START_BLOCK=0
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./backend/prisma:/app/prisma
     env_file:
