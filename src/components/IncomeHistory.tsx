@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useReadContract, usePublicClient } from 'wagmi';
+import { useAccount, useReadContract, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { TRK_ADDRESSES } from '../config/contractAddresses';
 import TRKRouterABI from '../abis/TRKRouter.json';
 import { formatUnits } from 'viem';
@@ -80,6 +80,26 @@ export default function IncomeHistory() {
     const [pNetworkWinTotal, setPNetworkWinTotal] = useState('0.00');
     const [pConversionTotal, setPConversionTotal] = useState('0.00');
     const [luckyPrizeTotal, setLuckyPrizeTotal] = useState<bigint>(BigInt(0));
+
+    // Club Pool Claim
+    const { data: poolsData } = useReadContract({
+        address: TRK_ADDRESSES.ROUTER,
+        abi: TRKRouterABI.abi,
+        functionName: 'getPools',
+        query: { enabled: isConnected && !!address, refetchInterval: 5000 }
+    });
+    const clubPoolBal = (poolsData as any)?.[1] ?? BigInt(0);
+
+    const { writeContract: claimClubPoolWrite, data: claimClubTxHash, isPending: claimClubPending } = useWriteContract();
+    const { isLoading: claimClubConfirming, isSuccess: claimClubSuccess } = useWaitForTransactionReceipt({ hash: claimClubTxHash });
+
+    const handleClaimClubPool = () => {
+        claimClubPoolWrite({
+            address: TRK_ADDRESSES.ROUTER,
+            abi: TRKRouterABI.abi,
+            functionName: 'claimClubPool',
+        });
+    };
 
     const totalRealIncomeVal = withdrawableWins + directInc + winnerInc + cashbackI + lossRefI + clubI + luckyPrizeTotal;
     const luckyPrizeDisplay = formatBal(luckyPrizeTotal);
@@ -328,6 +348,18 @@ export default function IncomeHistory() {
                         <div className="flex items-baseline gap-1">
                             <p className="text-2xl font-black text-orange-400">{clubInc}</p>
                             <span className="text-[10px] text-gray-500 font-bold uppercase">USDT</span>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-white/5">
+                            <p className="text-[9px] text-gray-500 font-bold uppercase mb-2">
+                                Pool Balance: <span className="text-orange-400">${Number(formatUnits(clubPoolBal, 18)).toFixed(2)}</span>
+                            </p>
+                            <button
+                                onClick={handleClaimClubPool}
+                                disabled={claimClubPending || claimClubConfirming || clubPoolBal === BigInt(0)}
+                                className="w-full py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {claimClubPending ? 'Confirm...' : claimClubConfirming ? 'Sending...' : claimClubSuccess ? '✓ Claimed' : 'Claim → FEW'}
+                            </button>
                         </div>
                     </div>
 

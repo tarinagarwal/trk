@@ -266,6 +266,11 @@ contract TRKRouter is Ownable { // NEW: Inherit Ownable
         treasury.deductClubPool(totalDistributed);
     }
 
+    // Admin: Claim entire Club Pool balance → sends to FEW wallet
+    function claimClubPool() external onlyOwner {
+        treasury.claimClubPool();
+    }
+
     // Admin: Force-execute the Lucky Draw NOW without needing 10k tickets (for demo/testnet)
     function adminTriggerLuckyDraw(uint8 drawType) external onlyOwner {
         lucky.forceExecuteDraw(drawType);

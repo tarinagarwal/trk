@@ -302,7 +302,36 @@ export default function ReferralPage() {
             try {
                 const res = await fetch(API_ENDPOINTS.GET_TEAM_STATS(address as string));
                 const data = await res.json();
-                if (!data.success || !data.allMembers || data.allMembers.length === 0) return;
+
+                console.log('Team stats API response:', data);
+
+                if (!data.success || !data.allMembers || data.allMembers.length === 0) {
+                    console.warn('Team stats unavailable from backend, using direct referrals only');
+                    // Fallback: Use direct referrals only if backend doesn't have team data
+                    if (directReferrals.length > 0) {
+                        const calls = directReferrals.map((member: string) =>
+                            publicClient!.readContract({
+                                address: TRK_GAME_ADDRESS as `0x${string}`,
+                                abi: TRKGameABI.abi,
+                                functionName: 'getUserInfo',
+                                args: [member as `0x${string}`]
+                            })
+                        );
+                        const results = await Promise.all(calls);
+                        let cashSum = BigInt(0);
+                        let practiceSum = BigInt(0);
+                        for (const r of results) {
+                            const u = r as any;
+                            cashSum += u?.cashGameBalance ?? (r as any[])?.[5] ?? BigInt(0);
+                            practiceSum += u?.practiceBalance ?? (r as any[])?.[4] ?? BigInt(0);
+                        }
+                        if (!cancelled) {
+                            setTeamTotalCash(cashSum);
+                            setTeamTotalPractice(practiceSum);
+                        }
+                    }
+                    return;
+                }
 
                 const calls = data.allMembers.map((member: string) =>
                     publicClient!.readContract({
@@ -330,7 +359,7 @@ export default function ReferralPage() {
         }
         fetchTeamBalances();
         return () => { cancelled = true; };
-    }, [address, publicClient]);
+    }, [address, publicClient, directReferrals]);
 
     // Fetch History from Backend
     useEffect(() => {
@@ -389,8 +418,8 @@ export default function ReferralPage() {
             <div className="grid md:grid-cols-3 gap-6 mb-8">
                 {[
                     { label: 'Total Team', val: totalTeamCount, color: 'text-primary' },
-                    { label: 'Total Team Cash Balance', val: `${Number(formatUnits(teamTotalCash, 18)).toFixed(2)} USDT`, color: 'text-green-400' },
-                    { label: 'Total Team Practice Balance', val: `${Number(formatUnits(teamTotalPractice, 18)).toFixed(2)} USDT`, color: 'text-yellow-500' }
+                    { label: 'Total Cash Income', val: `${Number(formatUnits(totalCashIncomeVal, 18)).toFixed(2)} USDT`, color: 'text-green-400' },
+                    { label: 'Total Practice Income', val: `${Number(formatUnits(pIncomeVal, 18)).toFixed(2)} USDT`, color: 'text-yellow-500' }
                 ].map((stat, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                         className="bg-surface/50 p-6 rounded-2xl border border-gray-800 shadow-xl"
@@ -415,7 +444,7 @@ export default function ReferralPage() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto custom-scrollbar">
+                <div className="overflow-x-auto overflow-y-auto max-h-[800px] custom-scrollbar">
                     <table className="w-full text-left border-separate border-spacing-y-2">
                         <thead>
                             <tr className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-black italic">
@@ -519,6 +548,10 @@ export default function ReferralPage() {
                     <div className="flex items-center gap-3">
                         <span className="shrink-0 bg-green-500/15 border border-green-500/40 text-green-400 px-2 py-0.5 rounded font-black tracking-tighter uppercase">✅ Green</span>
                         <span className="text-gray-400">Level is <strong className="text-green-400">ACTIVE</strong> — you are earning cash income from this level.</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="shrink-0 bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 px-2 py-0.5 rounded font-black tracking-tighter uppercase">🟡 Yellow</span>
+                        <span className="text-gray-400">Practice mode <strong className="text-yellow-400">ACTIVATED</strong> — earning practice bonuses. Deposit 100 USDT to unlock cash income.</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="shrink-0 bg-red-500/15 border border-red-500/40 text-red-400 px-2 py-0.5 rounded font-black tracking-tighter uppercase">🔴 Red</span>

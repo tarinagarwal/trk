@@ -21,6 +21,8 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 const lastBlockKey = 'trk_last_processed_block';
 let startBlock = parseInt(process.env.START_BLOCK || '0');
 const blockTimestampCache = new Map();
+const DEFAULT_CATCHUP_CHUNK_SIZE = parseInt(process.env.CATCHUP_CHUNK_SIZE || '2000', 10);
+const MIN_CATCHUP_CHUNK_SIZE = parseInt(process.env.CATCHUP_MIN_CHUNK_SIZE || '100', 10);
 
 
 const ABIS = {
@@ -74,6 +76,45 @@ async function ensureUserExists(address) {
   }
 }
 
+function isLimitError(err) {
+  const msg = (err && err.message ? err.message : '').toLowerCase();
+  return msg.includes('request exceeds defined limit')
+    || msg.includes('query returned more than')
+    || msg.includes('response size exceeded')
+    || msg.includes('block range')
+    || msg.includes('limit exceeded');
+}
+
+async function getLogsChunked(config, fromBlock, toBlock) {
+  const allLogs = [];
+  let cursor = Number(fromBlock);
+  const end = Number(toBlock);
+  let chunkSize = Math.max(MIN_CATCHUP_CHUNK_SIZE, DEFAULT_CATCHUP_CHUNK_SIZE);
+
+  while (cursor <= end) {
+    const chunkEnd = Math.min(cursor + chunkSize - 1, end);
+    try {
+      const logs = await client.getLogs({
+        address: config.address,
+        event: parseAbiItem(config.abi),
+        fromBlock: BigInt(cursor),
+        toBlock: BigInt(chunkEnd)
+      });
+      if (logs.length > 0) allLogs.push(...logs);
+      cursor = chunkEnd + 1;
+    } catch (e) {
+      if (isLimitError(e) && chunkSize > MIN_CATCHUP_CHUNK_SIZE) {
+        chunkSize = Math.max(MIN_CATCHUP_CHUNK_SIZE, Math.floor(chunkSize / 2));
+        console.warn(`⚠️ ${config.name} catch-up chunk reduced to ${chunkSize} blocks due to RPC limits.`);
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  return allLogs;
+}
+
 async function watchEvents() {
   await redisClient.connect();
   console.log("🚀 Event Watcher Connected to Chain & Redis...");
@@ -107,12 +148,7 @@ async function watchEvents() {
     console.log(`🔄 Catching up from ${startBlock} to ${currentBlock}...`);
     for (const config of eventConfigs) {
       try {
-        const logs = await client.getLogs({
-          address: config.address,
-          event: parseAbiItem(config.abi),
-          fromBlock: BigInt(startBlock),
-          toBlock: currentBlock
-        });
+        const logs = await getLogsChunked(config, startBlock, Number(currentBlock));
         if (logs.length > 0) {
           console.log(`📥 Found ${logs.length} missed ${config.name} events.`);
           await handleLogs(logs, config.name);
