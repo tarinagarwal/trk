@@ -1,0 +1,183 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  address          String           @id
+  referralCode     String?          @unique
+  referrer         String?
+  registrationTime Int?
+  isRegistered     Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  bets             Bet[]
+  conversions      Conversion[]
+  deposits         Deposit[]
+  incomes          Income[]
+  luckyTickets     LuckyTicket[]
+  rewards          PracticeReward[]
+  winnings         Win[]
+  withdrawals      Withdraw[]
+}
+
+model PracticeReward {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  fromAddress String
+  amount      String
+  level       Int
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Registration {
+  address   String   @id
+  referrer  String?
+  userId    Int
+  hash      String
+  logIndex  Int      @default(0)
+  timestamp Int
+  createdAt DateTime @default(now())
+
+  @@unique([hash, logIndex])
+}
+
+model Bet {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  amount      String
+  prediction  Int
+  isCash      Boolean
+  roundId     Int
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Round {
+  id            Int      @id @default(autoincrement())
+  roundId       Int
+  winningNumber Int
+  isCash        Boolean
+  timestamp     Int
+  createdAt     DateTime @default(now())
+}
+
+model Draw {
+  id            Int      @id @default(autoincrement())
+  drawId        Int
+  drawType      Int
+  jackpotWinner String
+  hash          String   @unique
+  block         Int
+  timestamp     Int
+  createdAt     DateTime @default(now())
+}
+
+model Win {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  amount      String
+  isCash      Boolean
+  roundId     Int
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Conversion {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  amount      String
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Deposit {
+  id             Int      @id @default(autoincrement())
+  hash           String
+  logIndex       Int      @default(0)
+  userAddress    String
+  amount         String
+  creditedToCash String
+  timestamp      Int
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Withdraw {
+  id             Int      @id @default(autoincrement())
+  hash           String
+  logIndex       Int      @default(0)
+  userAddress    String
+  totalRequested String
+  fee            String
+  amountSent     String
+  timestamp      Int
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model LuckyTicket {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  count       Int
+  drawId      Int
+  drawType    Int
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model Income {
+  id          Int      @id @default(autoincrement())
+  hash        String
+  logIndex    Int      @default(0)
+  userAddress String
+  amount      String
+  source      String
+  walletType  String
+  timestamp   Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userAddress], references: [address])
+
+  @@unique([hash, logIndex])
+}
+
+model GlobalStats {
+  id                 Int @id @default(autoincrement())
+  totalTicketsSilver Int @default(0)
+  totalTicketsGolden Int @default(0)
+}

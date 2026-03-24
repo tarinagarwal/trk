@@ -1,0 +1,37 @@
+{
+  "timestamp": 1774359720,
+  "stats": {
+    "users": "0",
+    "volume": "0",
+    "withdrawn": "0"
+  },
+  "pools": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+  ],
+  "rounds": {
+    "practiceId": "0",
+    "cashId": "0"
+  },
+  "lucky": {
+    "golden": {
+      "drawId": "0",
+      "ticketsSold": "0",
+      "maxTickets": "10000",
+      "prizePool": "0"
+    },
+    "silver": {
+      "drawId": "0",
+      "ticketsSold": "0",
+      "maxTickets": "10000",
+      "prizePool": "0"
+    }
+  }
+}

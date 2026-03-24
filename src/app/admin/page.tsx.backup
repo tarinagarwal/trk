@@ -1,0 +1,829 @@
+'use client';
+
+import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { formatUnits } from 'viem';
+import { TRK_GAME_ADDRESS } from '../../config';
+import TRKGameABI from '../../abis/TRKRouter.json';
+import { useState } from 'react';
+
+export default function AdvancedAdminPanel() {
+    const { address, isConnected } = useAccount();
+    const [activeTab, setActiveTab] = useState('overview');
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [historyFilter, setHistoryFilter] = useState('all');
+
+    // Check if user is owner
+    const { data: ownerAddress } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'owner',
+    });
+
+    const isOwner = ownerAddress && address && 
+        (ownerAddress as string).toLowerCase() === address.toLowerCase();
+
+    // Global stats
+    const { data: totalUsers } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'lastUserId',
+    });
+
+    const { data: globalStats } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'globalStats',
+    });
+
+    const { data: currentRoundId } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'currentRoundId',
+    });
+
+    const { data: adminBalance } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'companyBalance',
+    });
+
+    const { writeContract, isPending } = useWriteContract();
+
+    if (!isConnected) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-white mb-4">🔐 Admin Panel Access</h2>
+                    <p className="text-gray-400">Please connect your wallet to continue</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isOwner) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-500 mb-4">⛔ Access Denied</h2>
+                    <p className="text-gray-400">You are not authorized to access this panel</p>
+                    <p className="text-gray-500 text-sm mt-2 font-mono">{address}</p>
+                </div>
+            </div>
+        );
+    }
+
+    const stats = globalStats as any;
+    const totalUsersCount = totalUsers ? Number(totalUsers) - 1 : 0;
+
+    return (
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 text-white p-8">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold mb-2">🎮 Advanced Admin Panel</h1>
+                    <p className="text-gray-400">Complete control and monitoring dashboard</p>
+                    <p className="text-xs text-gray-600 font-mono mt-2">Contract: {TRK_GAME_ADDRESS}</p>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-6">
+                        <div className="text-blue-400 text-sm mb-2">👥 Total Users</div>
+                        <div className="text-3xl font-bold">{totalUsersCount}</div>
+                    </div>
+                    <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-6">
+                        <div className="text-green-400 text-sm mb-2">💰 Total Deposited</div>
+                        <div className="text-3xl font-bold">{stats ? Number(formatUnits(stats[1], 18)).toFixed(2) : '0'} <span className="text-lg">USDT</span></div>
+                    </div>
+                    <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-6">
+                        <div className="text-purple-400 text-sm mb-2">🎲 Current Round</div>
+                        <div className="text-3xl font-bold">#{currentRoundId ? currentRoundId.toString() : '0'}</div>
+                    </div>
+                    <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6">
+                        <div className="text-yellow-400 text-sm mb-2">🏦 Admin Balance</div>
+                        <div className="text-3xl font-bold">{adminBalance ? Number(formatUnits(adminBalance as bigint, 18)).toFixed(2) : '0'} <span className="text-lg">USDT</span></div>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-2 mb-6 overflow-x-auto">
+                    {['overview', 'users', 'transactions', 'rounds', 'finance', 'settings'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
+                                activeTab === tab
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Tab Content */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
+                    {activeTab === 'overview' && <OverviewTab stats={stats} />}
+                    {activeTab === 'users' && <UsersTab totalUsers={totalUsersCount} setSelectedUserId={setSelectedUserId} />}
+                    {activeTab === 'transactions' && <TransactionsTab filter={historyFilter} setFilter={setHistoryFilter} />}
+                    {activeTab === 'rounds' && <RoundsTab currentRoundId={currentRoundId} writeContract={writeContract} isPending={isPending} />}
+                    {activeTab === 'finance' && <FinanceTab adminBalance={adminBalance} writeContract={writeContract} isPending={isPending} />}
+                    {activeTab === 'settings' && <SettingsTab writeContract={writeContract} isPending={isPending} />}
+                </div>
+
+                {/* User Detail Modal */}
+                {selectedUserId && (
+                    <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Overview Tab
+function OverviewTab({ stats }: any) {
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold mb-4">📊 Platform Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Total Deposited</div>
+                    <div className="text-2xl font-bold text-green-400">
+                        {stats ? Number(formatUnits(stats[1], 18)).toFixed(2) : '0'} USDT
+                    </div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Total Withdrawn</div>
+                    <div className="text-2xl font-bold text-red-400">
+                        {stats ? Number(formatUnits(stats[2], 18)).toFixed(2) : '0'} USDT
+                    </div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Total Payouts</div>
+                    <div className="text-2xl font-bold text-blue-400">
+                        {stats ? Number(formatUnits(stats[3], 18)).toFixed(2) : '0'} USDT
+                    </div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Total Commissions</div>
+                    <div className="text-2xl font-bold text-purple-400">
+                        {stats ? Number(formatUnits(stats[4], 18)).toFixed(2) : '0'} USDT
+                    </div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Total Turnover</div>
+                    <div className="text-2xl font-bold text-yellow-400">
+                        {stats ? Number(formatUnits(stats[5], 18)).toFixed(2) : '0'} USDT
+                    </div>
+                </div>
+                <div className="bg-gray-800/50 p-4 rounded-lg">
+                    <div className="text-gray-400 text-sm">Platform Health</div>
+                    <div className="text-2xl font-bold text-green-400">
+                        ✅ Operational
+                    </div>
+                </div>
+            </div>
+
+            {/* Financial Summary Chart */}
+            <div className="bg-gray-800/30 p-6 rounded-lg mt-6">
+                <h3 className="text-lg font-bold mb-4">📈 Financial Summary</h3>
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total Deposits</span>
+                        <span className="text-green-400 font-bold">{stats ? Number(formatUnits(stats[1], 18)).toFixed(2) : '0'} USDT</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total Withdrawals</span>
+                        <span className="text-red-400 font-bold">-{stats ? Number(formatUnits(stats[2], 18)).toFixed(2) : '0'} USDT</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total Payouts</span>
+                        <span className="text-blue-400 font-bold">-{stats ? Number(formatUnits(stats[3], 18)).toFixed(2) : '0'} USDT</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Total Commissions</span>
+                        <span className="text-purple-400 font-bold">-{stats ? Number(formatUnits(stats[4], 18)).toFixed(2) : '0'} USDT</span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
+                        <span className="text-white font-bold">Net Platform Flow</span>
+                        <span className="text-yellow-400 font-bold text-xl">
+                            {stats ? (
+                                Number(formatUnits(stats[1], 18)) - 
+                                Number(formatUnits(stats[2], 18)) - 
+                                Number(formatUnits(stats[3], 18)) - 
+                                Number(formatUnits(stats[4], 18))
+                            ).toFixed(2) : '0'} USDT
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Users Tab with full list
+function UsersTab({ totalUsers, setSelectedUserId }: any) {
+    const [searchId, setSearchId] = useState('');
+    const [page, setPage] = useState(1);
+    const perPage = 20;
+    
+    const filteredUsers = searchId ? [parseInt(searchId)] : Array.from({ length: totalUsers }, (_, i) => i + 1);
+    const paginatedUsers = filteredUsers.slice((page - 1) * perPage, page * perPage);
+    const totalPages = Math.ceil(filteredUsers.length / perPage);
+    
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">👥 User Management ({totalUsers} users)</h2>
+                <input
+                    type="number"
+                    placeholder="Search User ID..."
+                    value={searchId}
+                    onChange={(e) => setSearchId(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                />
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-gray-700 text-left">
+                            <th className="p-3 text-gray-400 text-sm">ID</th>
+                            <th className="p-3 text-gray-400 text-sm">Address</th>
+                            <th className="p-3 text-gray-400 text-sm">Ref Code</th>
+                            <th className="p-3 text-gray-400 text-sm">Status</th>
+                            <th className="p-3 text-gray-400 text-sm">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedUsers.map(userId => (
+                            <UserRowAdvanced key={userId} userId={userId} onClick={() => setSelectedUserId(userId)} />
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 text-white px-4 py-2 rounded"
+                    >
+                        Previous
+                    </button>
+                    <span className="bg-gray-800 text-white px-4 py-2 rounded">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 text-white px-4 py-2 rounded"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// User Row Component
+function UserRowAdvanced({ userId, onClick }: any) {
+    const { data: addr } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'idToAddress',
+        args: [BigInt(userId)],
+    });
+
+    const { data: refCode } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'addressToReferralCode',
+        args: [addr || '0x0000000000000000000000000000000000000000'],
+    });
+
+    const { data: userData } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'users',
+        args: [addr || '0x0000000000000000000000000000000000000000'],
+    });
+
+    if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+        return null;
+    }
+
+    const user = userData as any;
+    const isActive = user ? user[10] : false;
+    const isReal = user ? user[11] : false;
+
+    return (
+        <tr className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors cursor-pointer" onClick={onClick}>
+            <td className="p-3 font-mono">#{userId}</td>
+            <td className="p-3 font-mono text-sm text-blue-400">{(addr as string).slice(0, 10)}...{(addr as string).slice(-8)}</td>
+            <td className="p-3 font-mono text-green-400">{refCode ? String(refCode) : 'Loading...'}</td>
+            <td className="p-3">
+                {isActive ? (
+                    isReal ? (
+                        <span className="bg-yellow-900/50 text-yellow-400 text-xs px-2 py-1 rounded">💎 REAL CASH</span>
+                    ) : (
+                        <span className="bg-blue-900/50 text-blue-400 text-xs px-2 py-1 rounded">🎮 PRACTICE</span>
+                    )
+                ) : (
+                    <span className="bg-gray-900/50 text-gray-400 text-xs px-2 py-1 rounded">❌ INACTIVE</span>
+                )}
+            </td>
+            <td className="p-3">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded">
+                    View Details
+                </button>
+            </td>
+        </tr>
+    );
+}
+
+// Transactions History Tab
+function TransactionsTab({ filter, setFilter }: any) {
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">📜 Complete Transaction History</h2>
+                <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                >
+                    <option value="all">All Transactions</option>
+                    <option value="deposit">Deposits</option>
+                    <option value="withdrawal">Withdrawals</option>
+                    <option value="bet">Bets</option>
+                    <option value="win">Wins</option>
+                    <option value="commission">Commissions</option>
+                </select>
+            </div>
+
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                <p className="text-blue-400 mb-2">📊 Complete Transaction History via BSCScan</p>
+                <p className="text-gray-400 text-sm">For complete transaction logs with timestamps and tx hashes:</p>
+                <a 
+                    href={`https://bscscan.com/address/${TRK_GAME_ADDRESS}#events`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline text-sm"
+                >
+                    View All Events on BSCScan →
+                </a>
+            </div>
+
+            {/* Transaction Summary */}
+            <div className="space-y-3">
+                <h3 className="text-lg font-bold">Recent Activity (Live)</h3>
+                <div className="space-y-2">
+                    <div className="bg-gray-800/50 p-4 rounded-lg flex justify-between items-center border-l-4 border-green-500">
+                        <div>
+                            <div className="text-green-400 font-mono text-sm font-bold">💰 DEPOSIT</div>
+                            <div className="text-gray-400 text-xs">User deposited to active balance</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-white font-bold">Amount: Variable</div>
+                            <div className="text-gray-500 text-xs">Check BSCScan for details</div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-800/50 p-4 rounded-lg flex justify-between items-center border-l-4 border-red-500">
+                        <div>
+                            <div className="text-red-400 font-mono text-sm font-bold">💸 WITHDRAWAL</div>
+                            <div className="text-gray-400 text-xs">User withdrew to wallet</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-white font-bold">Min: 5 USDT</div>
+                            <div className="text-gray-500 text-xs">Check BSCScan for details</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 p-4 rounded-lg flex justify-between items-center border-l-4 border-blue-500">
+                        <div>
+                            <div className="text-blue-400 font-mono text-sm font-bold">🎲 BET PLACED</div>
+                            <div className="text-gray-400 text-xs">User placed bet on number</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-white font-bold">Min: 1 USDT</div>
+                            <div className="text-gray-500 text-xs">Check BSCScan for details</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 p-4 rounded-lg flex justify-between items-center border-l-4 border-yellow-500">
+                        <div>
+                            <div className="text-yellow-400 font-mono text-sm font-bold">🎉 WIN PAYOUT</div>
+                            <div className="text-gray-400 text-xs">Winner received payout (36x)</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-white font-bold">36x Multiplier</div>
+                            <div className="text-gray-500 text-xs">Check BSCScan for details</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 p-4 rounded-lg flex justify-between items-center border-l-4 border-purple-500">
+                        <div>
+                            <div className="text-purple-400 font-mono text-sm font-bold">💰 COMMISSION</div>
+                            <div className="text-gray-400 text-xs">Referral commission distributed</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-white font-bold">6-Level System</div>
+                            <div className="text-gray-500 text-xs">Check BSCScan for details</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Export Options */}
+            <div className="bg-gray-800/30 p-4 rounded-lg">
+                <h4 className="text-white font-bold mb-2">📥 Export Options</h4>
+                <p className="text-gray-400 text-sm mb-3">Download transaction data for analysis</p>
+                <div className="flex gap-2">
+                    <a
+                        href={`https://bscscan.com/exportData?type=address&a=${TRK_GAME_ADDRESS}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                    >
+                        📊 Export via BSCScan
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Rounds Management Tab
+function RoundsTab({ currentRoundId, writeContract, isPending }: any) {
+    const [winningNumber, setWinningNumber] = useState('');
+
+    const handleCloseRound = () => {
+        if (!winningNumber || isPending) return;
+        writeContract({
+            address: TRK_GAME_ADDRESS,
+            abi: TRKGameABI.abi,
+            functionName: 'closeRound',
+            args: [Number(winningNumber)],
+        });
+        setWinningNumber('');
+    };
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold">🎲 Round Management</h2>
+            
+            <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-6">
+                <div className="text-purple-400 text-sm mb-2">Current Round</div>
+                <div className="text-5xl font-bold text-center">#{currentRoundId ? currentRoundId.toString() : '0'}</div>
+                <div className="text-center text-gray-400 text-sm mt-2">🟢 Active & Accepting Bets</div>
+            </div>
+
+            <div className="bg-gray-800/50 p-6 rounded-lg">
+                <h3 className="text-lg font-bold mb-4">🏁 Close Round & Declare Winner</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-gray-400 text-sm">Winning Number (0-9)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            max="9"
+                            value={winningNumber}
+                            onChange={(e) => setWinningNumber(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white text-2xl text-center"
+                            placeholder="Enter 0-9"
+                        />
+                    </div>
+                    <button
+                        onClick={handleCloseRound}
+                        disabled={isPending || !winningNumber}
+                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold py-3 rounded-lg transition-colors"
+                    >
+                        {isPending ? '⏳ Processing...' : '🏁 Close Round & Pay Winners'}
+                    </button>
+                    <p className="text-gray-500 text-xs italic">
+                        ⚠️ This action is irreversible. All winners will be paid 36x their bet amount immediately.
+                    </p>
+                </div>
+            </div>
+
+            {/* Round History */}
+            <div className="bg-gray-800/30 p-4 rounded-lg">
+                <h4 className="text-white font-bold mb-3">📜 Round History</h4>
+                <p className="text-gray-400 text-sm mb-2">View complete round history on BSCScan:</p>
+                <a 
+                    href={`https://bscscan.com/address/${TRK_GAME_ADDRESS}#events`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline text-sm"
+                >
+                    View RoundClosed Events →
+                </a>
+            </div>
+        </div>
+    );
+}
+
+// Finance Tab
+function FinanceTab({ adminBalance, writeContract, isPending }: any) {
+    const handleWithdraw = () => {
+        writeContract({
+            address: TRK_GAME_ADDRESS,
+            abi: TRKGameABI.abi,
+            functionName: 'withdraw',
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold">💰 Finance Management</h2>
+            
+            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-6">
+                <div className="text-green-400 text-sm mb-2">Available Admin Balance</div>
+                <div className="text-5xl font-bold text-center">
+                    {adminBalance ? Number(formatUnits(adminBalance as bigint, 18)).toFixed(2) : '0'} USDT
+                </div>
+                <div className="text-center text-gray-400 text-sm mt-2">Platform fees collected</div>
+            </div>
+
+            <button
+                onClick={handleWithdraw}
+                disabled={isPending || !adminBalance || Number(adminBalance) === 0}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-bold py-4 rounded-lg text-lg transition-colors"
+            >
+                {isPending ? '⏳ Processing Withdrawal...' : '💸 Withdraw All Fees to Owner'}
+            </button>
+
+            {/* Financial Breakdown */}
+            <div className="bg-gray-800/30 p-4 rounded-lg">
+                <h4 className="text-white font-bold mb-3">💵 Fee Structure</h4>
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Platform Fee on Bets:</span>
+                        <span className="text-white font-bold">5%</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Withdrawal Fee:</span>
+                        <span className="text-white font-bold">2 USDT</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Activation Fee:</span>
+                        <span className="text-white font-bold">10 USDT</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Registration Bonus:</span>
+                        <span className="text-white font-bold">100 USDT (Frozen)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Settings Tab
+function SettingsTab({ writeContract, isPending }: any) {
+    const [userAddress, setUserAddress] = useState('');
+
+    const handleActivateUser = () => {
+        if (!userAddress || isPending) return;
+        writeContract({
+            address: TRK_GAME_ADDRESS,
+            abi: TRKGameABI.abi,
+            functionName: 'ownerActivateUser',
+            args: [userAddress],
+        });
+        setUserAddress('');
+    };
+
+    const handleUnpruneUser = () => {
+        if (!userAddress || isPending) return;
+        writeContract({
+            address: TRK_GAME_ADDRESS,
+            abi: TRKGameABI.abi,
+            functionName: 'unpruneUser',
+            args: [userAddress],
+        });
+        setUserAddress('');
+    };
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold">⚙️ Admin Settings & Tools</h2>
+            
+            <div className="bg-gray-800/50 p-6 rounded-lg space-y-4">
+                <h3 className="text-lg font-bold">👤 User Management Tools</h3>
+                <div>
+                    <label className="text-gray-400 text-sm">User Address</label>
+                    <input
+                        type="text"
+                        value={userAddress}
+                        onChange={(e) => setUserAddress(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white font-mono"
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        onClick={handleActivateUser}
+                        disabled={isPending || !userAddress}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-bold py-3 rounded-lg"
+                    >
+                        {isPending ? '⏳...' : '✅ Activate User (Free)'}
+                    </button>
+                    <button
+                        onClick={handleUnpruneUser}
+                        disabled={isPending || !userAddress}
+                        className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-3 rounded-lg"
+                    >
+                        {isPending ? '⏳...' : '♻️ Unprune User'}
+                    </button>
+                </div>
+                <p className="text-gray-500 text-xs italic">
+                    💡 Activate User: Bypass 10 USDT activation fee for specific users<br />
+                    💡 Unprune User: Restore accounts marked as inactive (30-day system)
+                </p>
+            </div>
+
+            {/* Contract Info */}
+            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                <h4 className="text-yellow-400 font-bold mb-2">📋 Contract Information</h4>
+                <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Contract Address:</span>
+                        <span className="text-white font-mono">{TRK_GAME_ADDRESS.slice(0, 10)}...</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Network:</span>
+                        <span className="text-white">BSC Mainnet (Chain ID: 56)</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">USDT Decimals:</span>
+                        <span className="text-white">6</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Min Deposit:</span>
+                        <span className="text-white">1 USDT</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Min Bet:</span>
+                        <span className="text-white">1 USDT</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Min Withdrawal:</span>
+                        <span className="text-white">5 USDT</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="bg-gray-800/30 p-4 rounded-lg">
+                <h4 className="text-white font-bold mb-3">🔗 Quick Links</h4>
+                <div className="space-y-2">
+                    <a 
+                        href={`https://bscscan.com/address/${TRK_GAME_ADDRESS}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-center"
+                    >
+                        📊 View on BSCScan
+                    </a>
+                    <a 
+                        href={`https://bscscan.com/address/${TRK_GAME_ADDRESS}#code`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-center"
+                    >
+                        📝 View Contract Code
+                    </a>
+                    <a 
+                        href={`https://bscscan.com/address/${TRK_GAME_ADDRESS}#events`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-center"
+                    >
+                        📜 View All Events
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// User Detail Modal
+function UserDetailModal({ userId, onClose }: any) {
+    const { data: addr } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'idToAddress',
+        args: [BigInt(userId)],
+    });
+
+    const { data: userData } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'users',
+        args: [addr || '0x0000000000000000000000000000000000000000'],
+    });
+
+    const { data: refCode } = useReadContract({
+        address: TRK_GAME_ADDRESS,
+        abi: TRKGameABI.abi,
+        functionName: 'addressToReferralCode',
+        args: [addr || '0x0000000000000000000000000000000000000000'],
+    });
+
+    if (!userData) return null;
+
+    const user = userData as any;
+
+    return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">User #{userId} Complete Details</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Address */}
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="text-gray-400 text-sm">Wallet Address</div>
+                        <div className="text-white font-mono text-sm break-all">{addr as string}</div>
+                        <a 
+                            href={`https://bscscan.com/address/${addr}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline text-xs"
+                        >
+                            View on BSCScan →
+                        </a>
+                    </div>
+
+                    {/* Referral Code */}
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="text-gray-400 text-sm">Referral Code</div>
+                        <div className="text-white font-mono text-lg font-bold">{refCode as string}</div>
+                    </div>
+
+                    {/* Balances */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-green-900/20 border border-green-500/30 p-4 rounded-lg">
+                            <div className="text-green-400 text-sm">Active Balance</div>
+                            <div className="text-2xl font-bold text-white">{Number(formatUnits(user[3], 18)).toFixed(2)} USDT</div>
+                        </div>
+                        <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg">
+                            <div className="text-blue-400 text-sm">Frozen Balance</div>
+                            <div className="text-2xl font-bold text-white">{Number(formatUnits(user[2], 18)).toFixed(2)} USDT</div>
+                        </div>
+                    </div>
+
+                    {/* Transaction History */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-800/50 p-4 rounded-lg">
+                            <div className="text-gray-400 text-sm">Total Deposited</div>
+                            <div className="text-xl font-bold text-yellow-400">{Number(formatUnits(user[5], 18)).toFixed(2)} USDT</div>
+                        </div>
+                        <div className="bg-gray-800/50 p-4 rounded-lg">
+                            <div className="text-gray-400 text-sm">Total Withdrawn</div>
+                            <div className="text-xl font-bold text-red-400">{Number(formatUnits(user[6], 18)).toFixed(2)} USDT</div>
+                        </div>
+                        <div className="bg-gray-800/50 p-4 rounded-lg">
+                            <div className="text-gray-400 text-sm">Total Commissions</div>
+                            <div className="text-xl font-bold text-purple-400">{Number(formatUnits(user[7], 18)).toFixed(2)} USDT</div>
+                        </div>
+                        <div className="bg-gray-800/50 p-4 rounded-lg">
+                            <div className="text-gray-400 text-sm">Total Bets</div>
+                            <div className="text-xl font-bold text-blue-400">{Number(formatUnits(user[8], 18)).toFixed(2)} USDT</div>
+                        </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="text-gray-400 text-sm mb-2">Account Status</div>
+                        <div className="flex gap-2">
+                            {user[10] ? (
+                                <span className="bg-green-900/50 text-green-400 px-3 py-1 rounded border border-green-800">✅ Active</span>
+                            ) : (
+                                <span className="bg-red-900/50 text-red-400 px-3 py-1 rounded border border-red-800">❌ Inactive</span>
+                            )}
+                            {user[11] && (
+                                <span className="bg-yellow-900/50 text-yellow-400 px-3 py-1 rounded border border-yellow-800">💎 Real Cash Verified</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Referrer */}
+                    <div className="bg-gray-800/50 p-4 rounded-lg">
+                        <div className="text-gray-400 text-sm">Referrer Address</div>
+                        <div className="text-white font-mono text-sm">{user[1] !== '0x0000000000000000000000000000000000000000' ? user[1] : 'No Referrer'}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

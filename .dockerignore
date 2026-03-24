@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env*
+README.md
+Dockerfile
+.dockerignore
+contracts
+test
+artifacts
+typechain-types
+cache
+hardhat.config.ts
+scripts

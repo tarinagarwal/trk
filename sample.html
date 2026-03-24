@@ -1,0 +1,3165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRK Blockchain — Real Cash Game Ecosystem</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ═══════════════════════════════════════════
+   ROOT VARIABLES & RESET
+═══════════════════════════════════════════ */
+      :root {
+        --gold: #d4af37;
+        --gold-light: #f5d97a;
+        --gold-dim: #8b6914;
+        --cyan: #00d4ff;
+        --cyan-dim: #006680;
+        --green: #00ff9d;
+        --green-dim: #00804e;
+        --red: #ff4757;
+        --bg-void: #03050a;
+        --bg-deep: #080c14;
+        --bg-card: #0d1321;
+        --bg-glass: rgba(13, 19, 33, 0.85);
+        --border: rgba(212, 175, 55, 0.18);
+        --border-cyan: rgba(0, 212, 255, 0.18);
+        --text: #e8eaf0;
+        --text-muted: #7a8099;
+        --radius: 12px;
+        --glow-gold: 0 0 20px rgba(212, 175, 55, 0.35);
+        --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.35);
+        --glow-green: 0 0 20px rgba(0, 255, 157, 0.35);
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+        font-size: 16px;
+      }
+      body {
+        font-family: "Rajdhani", sans-serif;
+        background: var(--bg-void);
+        color: var(--text);
+        overflow-x: hidden;
+        line-height: 1.6;
+      }
+
+      /* ═══════════════════════════════════════════
+   CANVAS & BACKGROUND
+═══════════════════════════════════════════ */
+      #canvas-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.55;
+      }
+      .noise {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+        opacity: 0.4;
+      }
+      .grid-lines {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+        background-size: 60px 60px;
+      }
+
+      /* ═══════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════ */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-deep);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--gold-dim);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--gold);
+      }
+
+      /* ═══════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════ */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 0 40px;
+        background: rgba(3, 5, 10, 0.85);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+      .nav-logo {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 1.1rem;
+        color: var(--gold);
+        letter-spacing: 3px;
+        text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+      }
+      .nav-links {
+        display: flex;
+        gap: 28px;
+        list-style: none;
+      }
+      .nav-links a {
+        font-family: "Rajdhani", sans-serif;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        text-decoration: none;
+        text-transform: uppercase;
+        transition: color 0.3s;
+      }
+      .nav-links a:hover {
+        color: var(--gold);
+      }
+
+      /* ═══════════════════════════════════════════
+   WRAPPER
+═══════════════════════════════════════════ */
+      .wrapper {
+        position: relative;
+        z-index: 10;
+      }
+
+      /* ═══════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════ */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 120px 40px 80px;
+        position: relative;
+      }
+      .hero-tag {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.78rem;
+        color: var(--cyan);
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        border: 1px solid var(--border-cyan);
+        padding: 6px 18px;
+        border-radius: 100px;
+        margin-bottom: 32px;
+        display: inline-block;
+        animation: fadeUp 0.8s ease both;
+      }
+      .hero-title {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(2.8rem, 7vw, 6.5rem);
+        font-weight: 900;
+        line-height: 1;
+        margin-bottom: 12px;
+        animation: fadeUp 0.9s 0.1s ease both;
+      }
+      .hero-title .chain {
+        color: var(--gold);
+        text-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+      }
+      .hero-title .block {
+        color: var(--text);
+      }
+      .hero-sub {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(0.9rem, 2vw, 1.4rem);
+        color: var(--cyan);
+        letter-spacing: 6px;
+        margin-bottom: 40px;
+        animation: fadeUp 1s 0.2s ease both;
+      }
+      .hero-tagline {
+        font-size: 1.15rem;
+        color: var(--text-muted);
+        letter-spacing: 3px;
+        font-weight: 500;
+        margin-bottom: 56px;
+        animation: fadeUp 1s 0.3s ease both;
+      }
+      .hero-tagline span {
+        color: var(--gold);
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+        margin-bottom: 60px;
+        animation: fadeUp 1s 0.4s ease both;
+      }
+      .badge {
+        padding: 10px 22px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+        border: 1px solid;
+        backdrop-filter: blur(10px);
+      }
+      .badge-gold {
+        border-color: var(--gold);
+        color: var(--gold);
+        background: rgba(212, 175, 55, 0.07);
+      }
+      .badge-cyan {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0, 212, 255, 0.07);
+      }
+      .badge-green {
+        border-color: var(--green);
+        color: var(--green);
+        background: rgba(0, 255, 157, 0.07);
+      }
+      .hero-cta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+        animation: fadeUp 1s 0.5s ease both;
+      }
+      .btn {
+        padding: 16px 40px;
+        border-radius: 8px;
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+        color: #000;
+        border: none;
+        box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+      }
+      .btn-primary:hover {
+        box-shadow: 0 0 50px rgba(212, 175, 55, 0.7);
+        transform: translateY(-2px);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--cyan);
+        border: 1px solid var(--cyan);
+      }
+      .btn-outline:hover {
+        background: rgba(0, 212, 255, 0.1);
+        transform: translateY(-2px);
+      }
+      .hero-scroll {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        letter-spacing: 2px;
+        animation: fadeUp 1s 0.7s ease both;
+      }
+      .scroll-arrow {
+        width: 20px;
+        height: 20px;
+        border-right: 2px solid var(--gold);
+        border-bottom: 2px solid var(--gold);
+        transform: rotate(45deg);
+        animation: bounce 1.5s infinite;
+      }
+
+      /* ═══════════════════════════════════════════
+   STATS BAR
+═══════════════════════════════════════════ */
+      .stats-bar {
+        padding: 32px 40px;
+        background: linear-gradient(
+          90deg,
+          rgba(212, 175, 55, 0.05),
+          rgba(0, 212, 255, 0.05),
+          rgba(212, 175, 55, 0.05)
+        );
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: center;
+        gap: 60px;
+        flex-wrap: wrap;
+      }
+      .stat-item {
+        text-align: center;
+      }
+      .stat-num {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 2rem;
+        color: var(--gold);
+        text-shadow: var(--glow-gold);
+        display: block;
+      }
+      .stat-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      /* ═══════════════════════════════════════════
+   SECTIONS
+═══════════════════════════════════════════ */
+      section {
+        padding: 100px 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .section-full {
+        max-width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+      .section-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 40px;
+      }
+
+      .section-label {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.72rem;
+        color: var(--cyan);
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+        display: block;
+      }
+      .section-title {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 16px;
+      }
+      .section-title .accent {
+        color: var(--gold);
+      }
+      .section-desc {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        max-width: 680px;
+        line-height: 1.8;
+      }
+      .section-header {
+        margin-bottom: 64px;
+      }
+
+      /* divider */
+      .divider {
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold),
+          transparent
+        );
+        margin: 0;
+        opacity: 0.3;
+      }
+
+      /* ═══════════════════════════════════════════
+   CORE TECH GRID
+═══════════════════════════════════════════ */
+      .tech-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-top: 40px;
+      }
+      .tech-card {
+        padding: 28px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s;
+      }
+      .tech-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold),
+          transparent
+        );
+        transform: scaleX(0);
+        transition: transform 0.4s;
+      }
+      .tech-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(212, 175, 55, 0.35);
+        box-shadow: var(--glow-gold);
+      }
+      .tech-card:hover::before {
+        transform: scaleX(1);
+      }
+      .tech-icon {
+        font-size: 2rem;
+        margin-bottom: 16px;
+        display: block;
+      }
+      .tech-label {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .tech-val {
+        font-family: "Rajdhani", sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text);
+      }
+
+      /* ═══════════════════════════════════════════
+   SECTION BAND (full-width heading)
+═══════════════════════════════════════════ */
+      .band {
+        padding: 28px 40px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+      }
+      .band-active {
+        background: linear-gradient(
+          135deg,
+          rgba(230, 81, 0, 0.15),
+          rgba(255, 87, 34, 0.05)
+        );
+        border-top: 1px solid rgba(230, 81, 0, 0.3);
+        border-bottom: 1px solid rgba(230, 81, 0, 0.3);
+      }
+      .band-passive {
+        background: linear-gradient(
+          135deg,
+          rgba(0, 105, 96, 0.15),
+          rgba(0, 212, 255, 0.05)
+        );
+        border-top: 1px solid rgba(0, 150, 136, 0.3);
+        border-bottom: 1px solid rgba(0, 150, 136, 0.3);
+      }
+      .band-eco {
+        background: linear-gradient(
+          135deg,
+          rgba(212, 175, 55, 0.12),
+          rgba(212, 175, 55, 0.03)
+        );
+        border-top: 1px solid rgba(212, 175, 55, 0.3);
+        border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      }
+      .band-icon {
+        font-size: 2rem;
+      }
+      .band-text {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: clamp(1rem, 2vw, 1.5rem);
+        letter-spacing: 2px;
+      }
+      .band-sub {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+      }
+
+      /* ═══════════════════════════════════════════
+   INCOME CARDS
+═══════════════════════════════════════════ */
+      .income-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 28px;
+      }
+      .income-card {
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        overflow: hidden;
+        transition: all 0.4s;
+        position: relative;
+      }
+      .income-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      .income-card-header {
+        padding: 24px 28px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .income-num {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+      .num-orange {
+        background: rgba(230, 81, 0, 0.15);
+        border: 2px solid rgba(230, 81, 0, 0.5);
+        color: #ff6d00;
+      }
+      .num-teal {
+        background: rgba(0, 150, 136, 0.15);
+        border: 2px solid rgba(0, 150, 136, 0.5);
+        color: #00bfa5;
+      }
+      .num-gold {
+        background: rgba(212, 175, 55, 0.15);
+        border: 2px solid rgba(212, 175, 55, 0.5);
+        color: var(--gold);
+      }
+      .income-title {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+        line-height: 1.3;
+      }
+      .income-card-body {
+        padding: 0 28px 28px;
+      }
+      .income-desc {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+        line-height: 1.7;
+      }
+
+      /* ═══════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════ */
+      .tbl-wrap {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead tr {
+        background: rgba(212, 175, 55, 0.08);
+      }
+      thead th {
+        padding: 14px 18px;
+        text-align: left;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        color: var(--gold);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      tbody tr {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        transition: background 0.2s;
+      }
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: rgba(212, 175, 55, 0.04);
+      }
+      td {
+        padding: 13px 18px;
+        font-size: 0.95rem;
+        color: var(--text);
+        white-space: nowrap;
+      }
+      td.accent-gold {
+        color: var(--gold);
+        font-weight: 700;
+      }
+      td.accent-cyan {
+        color: var(--cyan);
+        font-weight: 600;
+      }
+      td.accent-green {
+        color: var(--green);
+        font-weight: 600;
+      }
+      td.accent-red {
+        color: var(--red);
+      }
+      td.center {
+        text-align: center;
+      }
+      .tbl-dark thead tr {
+        background: rgba(0, 212, 255, 0.08);
+      }
+      .tbl-dark thead th {
+        color: var(--cyan);
+      }
+      .tbl-green thead tr {
+        background: rgba(0, 255, 157, 0.06);
+      }
+      .tbl-green thead th {
+        color: var(--green);
+      }
+
+      /* ═══════════════════════════════════════════
+   INFO BOXES
+═══════════════════════════════════════════ */
+      .info-box {
+        border-radius: var(--radius);
+        padding: 24px 28px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        margin: 24px 0;
+      }
+      .info-gold {
+        border: 1px solid rgba(212, 175, 55, 0.25);
+        background: rgba(212, 175, 55, 0.05);
+      }
+      .info-cyan {
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        background: rgba(0, 212, 255, 0.05);
+      }
+      .info-green {
+        border: 1px solid rgba(0, 255, 157, 0.2);
+        background: rgba(0, 255, 157, 0.05);
+      }
+      .info-red {
+        border: 1px solid rgba(255, 71, 87, 0.25);
+        background: rgba(255, 71, 87, 0.05);
+      }
+      .info-icon {
+        font-size: 1.4rem;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .info-text {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+      }
+      .info-text strong {
+        color: var(--text);
+      }
+
+      /* ═══════════════════════════════════════════
+   CHECK / CROSS LISTS
+═══════════════════════════════════════════ */
+      .check-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .check-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 0.95rem;
+      }
+      .check-list li::before {
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .check-list.checks li::before {
+        content: "✔";
+        color: var(--green);
+        font-weight: 700;
+      }
+      .check-list.crosses li::before {
+        content: "✘";
+        color: var(--red);
+        font-weight: 700;
+      }
+      .check-list.bullets li::before {
+        content: "◆";
+        color: var(--gold);
+        font-size: 0.6rem;
+        margin-top: 5px;
+      }
+
+      /* ═══════════════════════════════════════════
+   FEATURE GRID
+═══════════════════════════════════════════ */
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+      .feat-card {
+        padding: 28px 24px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-cyan);
+        background: rgba(0, 212, 255, 0.04);
+        text-align: center;
+        transition: all 0.3s;
+      }
+      .feat-card:hover {
+        border-color: var(--cyan);
+        box-shadow: var(--glow-cyan);
+        transform: translateY(-4px);
+      }
+      .feat-icon {
+        font-size: 2.2rem;
+        margin-bottom: 14px;
+        display: block;
+      }
+      .feat-title {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--cyan);
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+      .feat-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* ═══════════════════════════════════════════
+   ACTIVATION TIERS
+═══════════════════════════════════════════ */
+      .tier-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .tier-card {
+        border-radius: var(--radius);
+        padding: 32px;
+        border: 2px solid;
+      }
+      .tier-10 {
+        border-color: rgba(0, 212, 255, 0.4);
+        background: rgba(0, 212, 255, 0.05);
+      }
+      .tier-100 {
+        border-color: rgba(212, 175, 55, 0.5);
+        background: rgba(212, 175, 55, 0.06);
+      }
+      .tier-amount {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 2.4rem;
+        margin-bottom: 6px;
+      }
+      .tier-10 .tier-amount {
+        color: var(--cyan);
+        text-shadow: var(--glow-cyan);
+      }
+      .tier-100 .tier-amount {
+        color: var(--gold);
+        text-shadow: var(--glow-gold);
+      }
+      .tier-label {
+        font-size: 0.75rem;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+      }
+      .tier-features {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .tier-features li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+      }
+      .tier-features li::before {
+        content: "✔";
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .tier-10 .tier-features li::before {
+        color: var(--cyan);
+      }
+      .tier-100 .tier-features li::before {
+        color: var(--gold);
+      }
+
+      /* ═══════════════════════════════════════════
+   LUCKY DRAW
+═══════════════════════════════════════════ */
+      .draw-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        margin-bottom: 40px;
+      }
+      .draw-card {
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid;
+      }
+      .draw-gold {
+        border-color: rgba(212, 175, 55, 0.4);
+      }
+      .draw-silver {
+        border-color: rgba(160, 160, 200, 0.35);
+      }
+      .draw-header {
+        padding: 28px;
+        text-align: center;
+      }
+      .draw-gold .draw-header {
+        background: linear-gradient(
+          135deg,
+          rgba(212, 175, 55, 0.15),
+          rgba(212, 175, 55, 0.04)
+        );
+      }
+      .draw-silver .draw-header {
+        background: linear-gradient(
+          135deg,
+          rgba(160, 160, 200, 0.1),
+          rgba(100, 100, 160, 0.03)
+        );
+      }
+      .draw-icon {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 12px;
+      }
+      .draw-name {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+      }
+      .draw-gold .draw-name {
+        color: var(--gold);
+      }
+      .draw-silver .draw-name {
+        color: #c0c0d8;
+      }
+      .draw-fee {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .draw-gold .draw-fee {
+        color: var(--gold);
+      }
+      .draw-silver .draw-fee {
+        color: #a0a0c0;
+      }
+      .draw-pool {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+      }
+      .draw-body {
+        padding: 20px;
+      }
+
+      /* ═══════════════════════════════════════════
+   CASHBACK PHASE CARDS
+═══════════════════════════════════════════ */
+      .phase-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .phase-card {
+        border-radius: var(--radius);
+        padding: 28px;
+        text-align: center;
+        border: 1px solid rgba(0, 255, 157, 0.2);
+        background: rgba(0, 255, 157, 0.04);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
+      }
+      .phase-card:hover {
+        border-color: var(--green);
+        box-shadow: var(--glow-green);
+        transform: translateY(-4px);
+      }
+      .phase-num {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 0.7rem;
+        letter-spacing: 3px;
+        color: var(--green);
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .phase-rate {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 2.4rem;
+        color: var(--green);
+        text-shadow: var(--glow-green);
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+      .phase-period {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+      }
+      .phase-users {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+
+      /* ═══════════════════════════════════════════
+   ROADMAP
+═══════════════════════════════════════════ */
+      .roadmap {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        position: relative;
+      }
+      .roadmap::before {
+        content: "";
+        position: absolute;
+        left: 31px;
+        top: 20px;
+        bottom: 20px;
+        width: 2px;
+        background: linear-gradient(
+          180deg,
+          var(--gold),
+          var(--cyan),
+          var(--green),
+          var(--gold)
+        );
+        opacity: 0.4;
+      }
+      .road-item {
+        display: flex;
+        gap: 28px;
+        align-items: flex-start;
+        padding: 28px 0;
+        position: relative;
+      }
+      .road-dot {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 0.8rem;
+        border: 2px solid;
+        position: relative;
+        z-index: 1;
+      }
+      .road-1 {
+        border-color: var(--gold);
+        color: var(--gold);
+        background: rgba(212, 175, 55, 0.1);
+      }
+      .road-2 {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0, 212, 255, 0.1);
+      }
+      .road-3 {
+        border-color: var(--green);
+        color: var(--green);
+        background: rgba(0, 255, 157, 0.1);
+      }
+      .road-4 {
+        border-color: #a855f7;
+        color: #a855f7;
+        background: rgba(168, 85, 247, 0.1);
+      }
+      .road-content {
+        flex: 1;
+        padding-top: 12px;
+      }
+      .road-phase {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.7rem;
+        letter-spacing: 3px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .road-title {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+      }
+      .road-desc {
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      /* ═══════════════════════════════════════════
+   REFERRAL TIER TABLE
+═══════════════════════════════════════════ */
+      .ref-tier-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .ref-card {
+        border-radius: var(--radius);
+        padding: 24px;
+        text-align: center;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        transition: all 0.3s;
+      }
+      .ref-card:hover {
+        border-color: var(--gold);
+        transform: translateY(-4px);
+      }
+      .ref-mult {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 2.5rem;
+        color: var(--gold);
+        text-shadow: var(--glow-gold);
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+      .ref-refs {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+        margin-bottom: 16px;
+        text-transform: uppercase;
+      }
+      .ref-cap {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--green);
+      }
+
+      /* ═══════════════════════════════════════════
+   VISION BLOCK
+═══════════════════════════════════════════ */
+      .vision-block {
+        padding: 100px 40px;
+        text-align: center;
+        background: linear-gradient(
+          180deg,
+          var(--bg-void) 0%,
+          rgba(212, 175, 55, 0.04) 50%,
+          var(--bg-void) 100%
+        );
+        position: relative;
+        overflow: hidden;
+      }
+      .vision-block::before {
+        content: "TRK";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 22vw;
+        color: rgba(212, 175, 55, 0.025);
+        pointer-events: none;
+        line-height: 1;
+        letter-spacing: 20px;
+      }
+      .vision-inner {
+        max-width: 800px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 2;
+      }
+      .vision-icon {
+        font-size: 4rem;
+        display: block;
+        margin-bottom: 24px;
+      }
+      .vision-title {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 5vw, 4rem);
+        background: linear-gradient(
+          135deg,
+          var(--gold),
+          var(--gold-light),
+          var(--gold)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 24px;
+        line-height: 1.1;
+      }
+      .vision-text {
+        font-size: 1.15rem;
+        color: var(--text-muted);
+        line-height: 1.8;
+        margin-bottom: 48px;
+      }
+      .vision-pillars {
+        display: flex;
+        gap: 24px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 56px;
+      }
+      .pillar {
+        padding: 14px 28px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: "Orbitron", sans-serif;
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        color: var(--gold);
+        background: rgba(212, 175, 55, 0.07);
+      }
+
+      /* ═══════════════════════════════════════════
+   SECURITY GRID
+═══════════════════════════════════════════ */
+      .security-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+      }
+      .sec-card {
+        padding: 24px;
+        border-radius: var(--radius);
+        text-align: center;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        transition: all 0.3s;
+      }
+      .sec-card:hover {
+        border-color: var(--green);
+        transform: translateY(-3px);
+      }
+      .sec-icon {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 12px;
+      }
+      .sec-text {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+      .sec-text strong {
+        color: var(--green);
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      /* ═══════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════ */
+      footer {
+        padding: 48px 40px;
+        text-align: center;
+        border-top: 1px solid var(--border);
+        background: var(--bg-deep);
+      }
+      .footer-logo {
+        font-family: "Orbitron", sans-serif;
+        font-weight: 900;
+        font-size: 1.5rem;
+        color: var(--gold);
+        letter-spacing: 4px;
+        text-shadow: var(--glow-gold);
+        margin-bottom: 12px;
+      }
+      .footer-sub {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+        margin-bottom: 28px;
+      }
+      .footer-badges {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+      }
+      .footer-note {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.7;
+      }
+
+      /* ═══════════════════════════════════════════
+   TWO COLUMN
+═══════════════════════════════════════════ */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        align-items: start;
+      }
+      .three-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 24px;
+      }
+
+      /* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: rotate(45deg) translateY(0);
+        }
+        50% {
+          transform: rotate(45deg) translateY(6px);
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      @keyframes glow {
+        0%,
+        100% {
+          text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+        }
+        50% {
+          text-shadow: 0 0 50px rgba(212, 175, 55, 0.8);
+        }
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition: all 0.7s ease;
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* responsive */
+      @media (max-width: 900px) {
+        .two-col,
+        .tier-grid,
+        .draw-grid {
+          grid-template-columns: 1fr;
+        }
+        .three-col,
+        .phase-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .ref-tier-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        nav {
+          padding: 0 20px;
+        }
+        .nav-links {
+          display: none;
+        }
+        section {
+          padding: 60px 20px;
+        }
+        .stats-bar {
+          gap: 30px;
+        }
+      }
+      @media (max-width: 600px) {
+        .three-col,
+        .phase-grid,
+        .ref-tier-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          padding: 100px 20px 60px;
+        }
+        .band {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- BACKGROUND CANVAS -->
+    <canvas id="canvas-bg"></canvas>
+    <div class="noise"></div>
+    <div class="grid-lines"></div>
+
+    <!-- NAV -->
+    <nav>
+      <div class="nav-logo">⛓ TRK</div>
+      <ul class="nav-links">
+        <li><a href="#intro">Overview</a></li>
+        <li><a href="#practice">Practice</a></li>
+        <li><a href="#activation">Activation</a></li>
+        <li><a href="#income">Income</a></li>
+        <li><a href="#luckydraw">Lucky Draw</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+      </ul>
+    </nav>
+
+    <div class="wrapper">
+      <!-- ═══════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════ -->
+      <div class="hero" id="hero">
+        <div class="hero-tag">
+          ⛓ BEP-20 · BINANCE SMART CHAIN · DECENTRALIZED
+        </div>
+        <h1 class="hero-title">
+          <span class="chain">TRK</span><br />
+          <span class="block">BLOCKCHAIN</span>
+        </h1>
+        <div class="hero-sub">® Real Cash Game Ecosystem</div>
+        <div class="hero-tagline">
+          <span>Play Smart</span> &nbsp;•&nbsp;
+          <span>Earn Sustainably</span> &nbsp;•&nbsp; <span>Win Forever</span>
+        </div>
+        <div class="hero-badges">
+          <div class="badge badge-gold">🎮 7 Income Streams</div>
+          <div class="badge badge-cyan">🛡️ No-Loss Cashback</div>
+          <div class="badge badge-green">💎 Real USDT Earnings</div>
+          <div class="badge badge-gold">🎰 Lucky Draw Jackpots</div>
+          <div class="badge badge-cyan">⚡ Auto Smart Payouts</div>
+        </div>
+        <div class="hero-cta">
+          <a href="#practice" class="btn btn-primary">🚀 Start Playing</a>
+          <a href="#income" class="btn btn-outline">📊 View Income</a>
+        </div>
+        <div class="hero-scroll">
+          <span>SCROLL</span>
+          <div class="scroll-arrow"></div>
+        </div>
+      </div>
+
+      <!-- STATS BAR -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-num">100</span
+          ><span class="stat-label">USDT Practice Bonus</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">8×</span
+          ><span class="stat-label">Win Multiplier</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">7</span
+          ><span class="stat-label">Income Streams</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">0.5%</span
+          ><span class="stat-label">Daily Cashback</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">10%</span
+          ><span class="stat-label">Lucky Draw Win Rate</span>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+     INTRO
+═══════════════════════════════════════════════ -->
+      <section id="intro">
+        <div class="section-header reveal">
+          <span class="section-label">// Introduction</span>
+          <h2 class="section-title">
+            Next-Gen Decentralized<br /><span class="accent"
+              >Gaming & Rewards</span
+            >
+          </h2>
+          <p class="section-desc">
+            TRK Blockchain is a real-cash gaming ecosystem built on Binance
+            Smart Chain (BEP-20) featuring transparent smart contracts,
+            automated payouts, referral-powered growth, and a Sustainable
+            "No-Loss" Cashback Architecture — protecting capital while enabling
+            continuous income opportunities.
+          </p>
+        </div>
+
+        <div class="tech-grid reveal">
+          <div class="tech-card">
+            <span class="tech-icon">⛓</span>
+            <div class="tech-label">Blockchain</div>
+            <div class="tech-val">Binance Smart Chain (BEP-20)</div>
+          </div>
+          <div class="tech-card">
+            <span class="tech-icon">💵</span>
+            <div class="tech-label">Currency</div>
+            <div class="tech-val">USDT → TRK Token (Future)</div>
+          </div>
+          <div class="tech-card">
+            <span class="tech-icon">📜</span>
+            <div class="tech-label">Smart Contracts</div>
+            <div class="tech-val">Fully Automated</div>
+          </div>
+          <div class="tech-card">
+            <span class="tech-icon">🔐</span>
+            <div class="tech-label">Wallet Type</div>
+            <div class="tech-val">MetaMask / Trust Wallet / SafePal</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 48px" class="reveal">
+          <div class="feature-grid">
+            <div class="feat-card">
+              <span class="feat-icon">🌐</span>
+              <div class="feat-title">100% Decentralized</div>
+              <div class="feat-text">
+                No central authority, fully on-chain governance and logic
+              </div>
+            </div>
+            <div class="feat-card">
+              <span class="feat-icon">⚡</span>
+              <div class="feat-title">Instant Payouts</div>
+              <div class="feat-text">
+                Automated smart contract payouts — zero manual interference
+              </div>
+            </div>
+            <div class="feat-card">
+              <span class="feat-icon">🔍</span>
+              <div class="feat-title">On-Chain Transparent</div>
+              <div class="feat-text">
+                Every transaction verifiable on the public blockchain
+              </div>
+            </div>
+            <div class="feat-card">
+              <span class="feat-icon">🔒</span>
+              <div class="feat-title">Secure Ownership</div>
+              <div class="feat-text">
+                Self-custody wallets — you hold your own keys and assets
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-box info-gold reveal" style="margin-top: 48px">
+          <span class="info-icon">🎯</span>
+          <div class="info-text">
+            <strong>Our Vision:</strong> Build the world's most secure, fair,
+            and sustainable real-cash blockchain gaming ecosystem — where
+            players win, teams grow, capital is protected, and income never
+            stops.
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- ═══════════════════════════════════════════════
+     PRACTICE REWARDS
+═══════════════════════════════════════════════ -->
+      <section id="practice">
+        <div class="section-header reveal">
+          <span class="section-label">// Part 1 — Registration</span>
+          <h2 class="section-title">
+            Practice Rewards &<br /><span class="accent"
+              >Onboarding System</span
+            >
+          </h2>
+          <p class="section-desc">
+            Start completely free. Learn gameplay, test strategies, and build
+            confidence before committing real capital. No personal funds
+            required at sign-up.
+          </p>
+        </div>
+
+        <!-- Bonus tiers -->
+        <div class="reveal" style="margin-bottom: 40px">
+          <h3
+            style="
+              font-family: &quot;Orbitron&quot;, sans-serif;
+              font-size: 1.1rem;
+              color: var(--gold);
+              margin-bottom: 20px;
+              letter-spacing: 2px;
+            "
+          >
+            🎁 Free Sign-Up Practice Bonus
+          </h3>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bonus Amount</th>
+                  <th>Availability</th>
+                  <th>Credit Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="accent-gold">100 USDT Practice Balance</td>
+                  <td>
+                    First <strong>10,000</strong> practice-activated users
+                  </td>
+                  <td>Practice Account only</td>
+                </tr>
+                <tr>
+                  <td class="accent-cyan">10 USDT Practice Balance</td>
+                  <td>
+                    First <strong>1,00,000</strong> practice-activated users
+                  </td>
+                  <td>Practice Account only</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="info-box info-red" style="margin-top: 16px">
+            <span class="info-icon">⚠️</span>
+            <div class="info-text">
+              <strong>Practice Balance Restrictions:</strong> Not withdrawable
+              &nbsp;•&nbsp; Not transferable &nbsp;•&nbsp; Not redeemable for
+              cash &nbsp;•&nbsp; For internal gameplay simulation only
+            </div>
+          </div>
+        </div>
+
+        <!-- Game mechanics -->
+        <div class="two-col reveal" style="margin-bottom: 40px">
+          <div>
+            <h3
+              style="
+                font-family: &quot;Orbitron&quot;, sans-serif;
+                font-size: 1.1rem;
+                color: var(--gold);
+                margin-bottom: 20px;
+                letter-spacing: 2px;
+              "
+            >
+              🎮 Practice Game Mechanics
+            </h3>
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Outcome</th>
+                    <th>Result</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="accent-green">🏆 Win</td>
+                    <td class="accent-green">8× Entry</td>
+                    <td>First 10,000 users; 4× thereafter</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-red">❌ Loss</td>
+                    <td class="accent-red">Points Burned</td>
+                    <td>Sent to null address permanently</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3
+              style="
+                font-family: &quot;Orbitron&quot;, sans-serif;
+                font-size: 1.1rem;
+                color: var(--cyan);
+                margin-bottom: 20px;
+                letter-spacing: 2px;
+              "
+            >
+              ⏳ 30-Day Activation Rule
+            </h3>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
+              <div
+                style="
+                  border: 1px solid rgba(0, 255, 157, 0.25);
+                  background: rgba(0, 255, 157, 0.04);
+                  padding: 20px;
+                  border-radius: 10px;
+                "
+              >
+                <div
+                  style="
+                    color: var(--green);
+                    font-weight: 700;
+                    margin-bottom: 12px;
+                    font-size: 0.85rem;
+                    letter-spacing: 1px;
+                  "
+                >
+                  ✔ IF ACTIVATED
+                </div>
+                <ul class="check-list checks" style="font-size: 0.88rem">
+                  <li>Account remains active</li>
+                  <li>Gameplay continues</li>
+                  <li>Secured permanently</li>
+                </ul>
+              </div>
+              <div
+                style="
+                  border: 1px solid rgba(255, 71, 87, 0.25);
+                  background: rgba(255, 71, 87, 0.04);
+                  padding: 20px;
+                  border-radius: 10px;
+                "
+              >
+                <div
+                  style="
+                    color: var(--red);
+                    font-weight: 700;
+                    margin-bottom: 12px;
+                    font-size: 0.85rem;
+                    letter-spacing: 1px;
+                  "
+                >
+                  ✘ IF NOT ACTIVATED
+                </div>
+                <ul class="check-list crosses" style="font-size: 0.88rem">
+                  <li>Game ID deleted</li>
+                  <li>Balance removed</li>
+                </ul>
+              </div>
+            </div>
+            <div class="info-box info-cyan" style="margin-top: 12px">
+              <span class="info-icon">💡</span>
+              <div class="info-text">
+                Deposit minimum <strong>10+ USDT</strong> within 30 days to
+                permanently activate your account.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Practice Referral Rewards -->
+        <div class="reveal" style="margin-bottom: 40px">
+          <h3
+            style="
+              font-family: &quot;Orbitron&quot;, sans-serif;
+              font-size: 1.1rem;
+              color: var(--gold);
+              margin-bottom: 8px;
+              letter-spacing: 2px;
+            "
+          >
+            🟡 Practice Referral Rewards
+          </h3>
+          <p
+            style="
+              color: var(--text-muted);
+              margin-bottom: 20px;
+              font-size: 0.95rem;
+            "
+          >
+            Earn a percentage of the 100 USDT base for every person you
+            introduce. Limit: 20 Direct Referrals for this bonus.
+          </p>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Level Range</th>
+                  <th>Reward %</th>
+                  <th>USDT per Referral</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="accent-gold">Level 1</td>
+                  <td class="accent-gold">10%</td>
+                  <td class="accent-gold">10.00 USDT</td>
+                </tr>
+                <tr>
+                  <td>Level 2 – 5</td>
+                  <td>2%</td>
+                  <td>2.00 USDT</td>
+                </tr>
+                <tr>
+                  <td>Level 6 – 10</td>
+                  <td>1%</td>
+                  <td>1.00 USDT</td>
+                </tr>
+                <tr>
+                  <td>Level 11 – 15</td>
+                  <td>0.5%</td>
+                  <td>0.50 USDT</td>
+                </tr>
+                <tr>
+                  <td>Level 16 – 50</td>
+                  <td>0.25%</td>
+                  <td>0.25 USDT</td>
+                </tr>
+                <tr>
+                  <td>Level 51 – 100</td>
+                  <td>0.10%</td>
+                  <td>0.10 USDT</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 10×10 Matrix -->
+        <div class="reveal">
+          <h3
+            style="
+              font-family: &quot;Orbitron&quot;, sans-serif;
+              font-size: 1.1rem;
+              color: var(--gold);
+              margin-bottom: 8px;
+              letter-spacing: 2px;
+            "
+          >
+            📊 Theoretical Practice Reward Matrix (10 × 10 Growth)
+          </h3>
+          <p
+            style="
+              color: var(--text-muted);
+              margin-bottom: 20px;
+              font-size: 0.95rem;
+            "
+          >
+            Assumes every user refers 10 people across 10 levels.
+          </p>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Level</th>
+                  <th>Team Size</th>
+                  <th>Bonus / User</th>
+                  <th>Total Frozen Reward</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="center">1</td>
+                  <td>10</td>
+                  <td>$10.00</td>
+                  <td class="accent-gold">$100</td>
+                </tr>
+                <tr>
+                  <td class="center">2</td>
+                  <td>100</td>
+                  <td>$2.00</td>
+                  <td class="accent-gold">$200</td>
+                </tr>
+                <tr>
+                  <td class="center">3</td>
+                  <td>1,000</td>
+                  <td>$2.00</td>
+                  <td class="accent-gold">$2,000</td>
+                </tr>
+                <tr>
+                  <td class="center">4</td>
+                  <td>10,000</td>
+                  <td>$2.00</td>
+                  <td class="accent-gold">$20,000</td>
+                </tr>
+                <tr>
+                  <td class="center">5</td>
+                  <td>1,00,000</td>
+                  <td>$2.00</td>
+                  <td class="accent-gold">$2,00,000</td>
+                </tr>
+                <tr>
+                  <td class="center">6</td>
+                  <td>10,00,000</td>
+                  <td>$1.00</td>
+                  <td class="accent-gold">$10,00,000</td>
+                </tr>
+                <tr>
+                  <td class="center">7</td>
+                  <td>10 Million</td>
+                  <td>$1.00</td>
+                  <td class="accent-gold">$1 Crore</td>
+                </tr>
+                <tr>
+                  <td class="center">8</td>
+                  <td>100 Million</td>
+                  <td>$1.00</td>
+                  <td class="accent-gold">$10 Crore</td>
+                </tr>
+                <tr>
+                  <td class="center">9</td>
+                  <td>1 Billion</td>
+                  <td>$1.00</td>
+                  <td class="accent-gold">$100 Crore</td>
+                </tr>
+                <tr>
+                  <td class="center">10</td>
+                  <td>10 Billion</td>
+                  <td>$1.00</td>
+                  <td class="accent-gold">$1,000 Crore</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="info-box info-gold" style="margin-top: 16px">
+            <span class="info-icon">📌</span>
+            <div class="info-text">
+              Theoretical maximums based on geometric growth assumptions. Actual
+              rewards depend on real user activity, genuine referrals, and
+              network expansion.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- ═══════════════════════════════════════════════
+     ACTIVATION
+═══════════════════════════════════════════════ -->
+      <section id="activation">
+        <div class="section-header reveal">
+          <span class="section-label">// Part 2 — Real Cash</span>
+          <h2 class="section-title">
+            Real Cash<br /><span class="accent">Activation Tiers</span>
+          </h2>
+          <p class="section-desc">
+            Unlock withdrawals and all income streams by depositing USDT into
+            your Cash Game Account.
+          </p>
+        </div>
+
+        <div class="tier-grid reveal">
+          <div class="tier-card tier-10">
+            <div class="tier-amount">10+ USDT</div>
+            <div class="tier-label">Deposit to Activate</div>
+            <ul class="tier-features">
+              <li>Winners Income (Direct Wins)</li>
+              <li>Direct Level Income (Referrals)</li>
+              <li>Winners Level Income</li>
+              <li>Access to Cash Game Rewards</li>
+            </ul>
+          </div>
+          <div class="tier-card tier-100">
+            <div class="tier-amount">100+ USDT</div>
+            <div class="tier-label">Full Ecosystem Access</div>
+            <ul class="tier-features">
+              <li>Transfer Practice Balance</li>
+              <li>Withdraw All Real Profits</li>
+              <li>Cashback Protection Active</li>
+              <li>All 7 Income Streams Unlocked</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="info-box info-cyan reveal" style="margin-top: 32px">
+          <span class="info-icon">🌉</span>
+          <div class="info-text">
+            <strong>Bridge to Cash (Conversion Model):</strong> To convert
+            Practice rewards to real value — qualify as a REAL CASH Direct
+            Referral with total volume ≥ 100 USDT. Practice balance becomes
+            convertible, transferable, and eligible for Cash Game use. Transfers
+            follow the Referral Income Structure (Levels 1–15 limits and pool
+            stability caps apply).
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- ═══════════════════════════════════════════════
+     7 INCOME STREAMS
+═══════════════════════════════════════════════ -->
+      <section id="income" style="max-width: 100%; padding: 100px 0">
+        <div class="section-inner">
+          <div class="section-header reveal">
+            <span class="section-label">// Part 3 — Income</span>
+            <h2 class="section-title">
+              Total <span class="accent">7 Income Streams</span>
+            </h2>
+            <p class="section-desc">
+              The TRK Ecosystem provides 7 powerful income streams — divided
+              into Active Income, Passive & Protection Income, and Ecosystem
+              Rewards.
+            </p>
+          </div>
+        </div>
+
+        <!-- ACTIVE INCOME BAND -->
+        <div class="band band-active section-full">
+          <div class="band-icon">🔥</div>
+          <div>
+            <div class="band-text" style="color: #ff6d00">
+              ACTIVE INCOME — Streams 1 · 2 · 3
+            </div>
+            <div class="band-sub">
+              Direct earnings from gameplay, referrals, and team wins
+            </div>
+          </div>
+        </div>
+
+        <div class="section-inner" style="margin-top: 48px">
+          <div class="income-grid reveal">
+            <!-- Income 1 -->
+            <div class="income-card">
+              <div class="income-card-header">
+                <div class="income-num num-orange">1</div>
+                <div>
+                  <div class="income-title">💎 Winners 8× Income</div>
+                  <div
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      margin-top: 4px;
+                    "
+                  >
+                    Direct win multiplier payouts
+                  </div>
+                </div>
+              </div>
+              <div class="income-card-body">
+                <p class="income-desc">
+                  Win the game and receive an instant multiplier payout —
+                  partially to your direct wallet and partially auto-compounded.
+                </p>
+                <div class="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tier</th>
+                        <th>Total Win</th>
+                        <th>Direct Wallet</th>
+                        <th>Auto Compound</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>First 10,000 Users</td>
+                        <td class="accent-gold">8×</td>
+                        <td>2×</td>
+                        <td>6×</td>
+                      </tr>
+                      <tr>
+                        <td>After 10,000 (Forever)</td>
+                        <td class="accent-cyan">4×</td>
+                        <td>2×</td>
+                        <td>2×</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Income 2 -->
+            <div class="income-card">
+              <div class="income-card-header">
+                <div class="income-num num-orange">2</div>
+                <div>
+                  <div class="income-title">👥 Direct Level Income</div>
+                  <div
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      margin-top: 4px;
+                    "
+                  >
+                    Commissions from team deposits
+                  </div>
+                </div>
+              </div>
+              <div class="income-card-body">
+                <div
+                  class="info-box info-cyan"
+                  style="margin-bottom: 16px; padding: 14px 18px"
+                >
+                  <span class="info-icon">⚡</span>
+                  <div class="info-text" style="font-size: 0.85rem">
+                    10 USDT activation mandatory. Each direct referral unlocks 1
+                    level. 10 directs required for all 15 levels.
+                  </div>
+                </div>
+                <div class="tbl-wrap">
+                  <table class="tbl-dark">
+                    <thead>
+                      <tr>
+                        <th>Level Range</th>
+                        <th>Commission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Level 1</td>
+                        <td class="accent-cyan">5%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 2</td>
+                        <td class="accent-cyan">2%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 3 – 5</td>
+                        <td class="accent-cyan">1%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 6 – 15</td>
+                        <td class="accent-cyan">0.5%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Income 3 -->
+            <div class="income-card">
+              <div class="income-card-header">
+                <div class="income-num num-orange">3</div>
+                <div>
+                  <div class="income-title">🏅 Winner Level Income</div>
+                  <div
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      margin-top: 4px;
+                    "
+                  >
+                    Earn when your team wins
+                  </div>
+                </div>
+              </div>
+              <div class="income-card-body">
+                <p class="income-desc">
+                  Earn commissions when your downline wins games — leveraged
+                  team-based rewards compounding your income automatically.
+                </p>
+                <div class="tbl-wrap">
+                  <table class="tbl-dark">
+                    <thead>
+                      <tr>
+                        <th>Level Range</th>
+                        <th>Winner Commission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Level 1</td>
+                        <td class="accent-gold">5%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 2</td>
+                        <td class="accent-gold">2%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 3 – 5</td>
+                        <td class="accent-gold">1%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 6 – 15</td>
+                        <td class="accent-gold">0.5%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASSIVE INCOME BAND -->
+        <div class="band band-passive section-full" style="margin-top: 60px">
+          <div class="band-icon">🛡️</div>
+          <div>
+            <div class="band-text" style="color: #00bfa5">
+              PASSIVE & PROTECTION INCOME — Streams 4 · 5
+            </div>
+            <div class="band-sub">
+              Capital recovery, daily cashback, and network earnings
+            </div>
+          </div>
+        </div>
+
+        <div class="section-inner" style="margin-top: 48px">
+          <!-- Income 4: Cashback -->
+          <div class="reveal" style="margin-bottom: 60px">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                margin-bottom: 24px;
+              "
+            >
+              <div
+                class="income-num num-teal"
+                style="width: 56px; height: 56px; font-size: 1.1rem"
+              >
+                4
+              </div>
+              <div>
+                <div
+                  style="
+                    font-family: &quot;Orbitron&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                  "
+                >
+                  💸 Losers Profit — Cashback Protection
+                </div>
+                <div
+                  style="
+                    font-size: 0.9rem;
+                    color: var(--text-muted);
+                    margin-top: 4px;
+                  "
+                >
+                  Daily auto-received recovery on losses ≥ 100 USDT
+                </div>
+              </div>
+            </div>
+            <p
+              style="
+                color: var(--text-muted);
+                margin-bottom: 28px;
+                line-height: 1.7;
+                font-size: 0.95rem;
+              "
+            >
+              Unlike traditional gaming where losses are permanent, TRK
+              automatically recovers your capital daily. No full wipe-outs.
+              Predictable protection. Sustainable ecosystem design.
+            </p>
+
+            <h4
+              style="
+                color: var(--text);
+                font-size: 0.95rem;
+                letter-spacing: 2px;
+                margin-bottom: 16px;
+                text-transform: uppercase;
+              "
+            >
+              Cashback Tier Structure
+            </h4>
+            <div class="phase-grid" style="margin-bottom: 32px">
+              <div class="phase-card">
+                <div class="phase-num">Phase 1</div>
+                <div class="phase-rate">0.50%</div>
+                <div class="phase-period">Daily</div>
+                <div class="phase-users">Up to 10,000 Users</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase-num">Phase 2</div>
+                <div class="phase-rate">0.40%</div>
+                <div class="phase-period">Daily</div>
+                <div class="phase-users">10,001 – 1,00,000 Users</div>
+              </div>
+              <div class="phase-card">
+                <div class="phase-num">Phase 3</div>
+                <div class="phase-rate">0.33%</div>
+                <div class="phase-period">Daily</div>
+                <div class="phase-users">After 1,00,000 Users</div>
+              </div>
+            </div>
+
+            <h4
+              style="
+                color: var(--text);
+                font-size: 0.95rem;
+                letter-spacing: 2px;
+                margin-bottom: 16px;
+                text-transform: uppercase;
+              "
+            >
+              🙂 Referral Cashback Boost — Tier Benefits
+            </h4>
+            <div class="ref-tier-grid" style="margin-bottom: 24px">
+              <div class="ref-card">
+                <div class="ref-mult">1×</div>
+                <div class="ref-refs">0 Referrals</div>
+                <div class="ref-cap">100% Cap</div>
+              </div>
+              <div class="ref-card">
+                <div class="ref-mult">2×</div>
+                <div class="ref-refs">5 Referrals</div>
+                <div class="ref-cap">200% Cap</div>
+              </div>
+              <div class="ref-card">
+                <div class="ref-mult">4×</div>
+                <div class="ref-refs">10 Referrals</div>
+                <div class="ref-cap">400% Cap</div>
+              </div>
+              <div class="ref-card">
+                <div class="ref-mult">8×</div>
+                <div class="ref-refs">20 Referrals</div>
+                <div class="ref-cap">800% Cap</div>
+              </div>
+            </div>
+            <div class="info-box info-gold">
+              <span class="info-icon">♻️</span>
+              <div class="info-text">
+                <strong>Sustainability Cycle:</strong> When earnings reach cap
+                (400–800%), earnings pause. Re-deposit minimum 100 USDT to
+                continue. After 10,000 user activations: 400% cap → 300%, 800%
+                cap → 400%. Each referred user must maintain minimum 100 USDT
+                deposit/volume to qualify.
+              </div>
+            </div>
+          </div>
+
+          <!-- Income 5: ROI on ROI -->
+          <div class="reveal">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                margin-bottom: 24px;
+              "
+            >
+              <div
+                class="income-num num-teal"
+                style="width: 56px; height: 56px; font-size: 1.1rem"
+              >
+                5
+              </div>
+              <div>
+                <div
+                  style="
+                    font-family: &quot;Orbitron&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                  "
+                >
+                  🔄 Losers ROI on ROI
+                </div>
+                <div
+                  style="
+                    font-size: 0.9rem;
+                    color: var(--text-muted);
+                    margin-top: 4px;
+                  "
+                >
+                  Team cashback → your daily passive income
+                </div>
+              </div>
+            </div>
+            <p
+              style="
+                color: var(--text-muted);
+                margin-bottom: 28px;
+                line-height: 1.7;
+                font-size: 0.95rem;
+              "
+            >
+              50% of total cashback generated by your entire network is
+              allocated for referral distribution. Even when your team loses —
+              you still earn. Daily, automated, passive.
+            </p>
+            <div class="two-col">
+              <div>
+                <div class="tbl-wrap">
+                  <table class="tbl-green">
+                    <thead>
+                      <tr>
+                        <th>Level Range</th>
+                        <th>Commission %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Level 1</td>
+                        <td class="accent-green">20%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 2 – 5</td>
+                        <td class="accent-green">10%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 6 – 10</td>
+                        <td class="accent-green">5%</td>
+                      </tr>
+                      <tr>
+                        <td>Level 11 – 15</td>
+                        <td class="accent-green">3%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h4
+                  style="
+                    color: var(--text);
+                    font-size: 0.9rem;
+                    letter-spacing: 2px;
+                    margin-bottom: 16px;
+                    text-transform: uppercase;
+                  "
+                >
+                  📈 Theoretical Daily Income (5×10 Matrix)
+                </h4>
+                <div class="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Level</th>
+                        <th>Team (5×)</th>
+                        <th>Daily Income</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="center">1</td>
+                        <td>5</td>
+                        <td>$0.25</td>
+                      </tr>
+                      <tr>
+                        <td class="center">2</td>
+                        <td>25</td>
+                        <td>$0.63</td>
+                      </tr>
+                      <tr>
+                        <td class="center">3</td>
+                        <td>125</td>
+                        <td>$3.13</td>
+                      </tr>
+                      <tr>
+                        <td class="center">4</td>
+                        <td>625</td>
+                        <td>$15.63</td>
+                      </tr>
+                      <tr>
+                        <td class="center">5</td>
+                        <td>3,125</td>
+                        <td>$78.13</td>
+                      </tr>
+                      <tr>
+                        <td class="center">6</td>
+                        <td>15,625</td>
+                        <td>$195.31</td>
+                      </tr>
+                      <tr>
+                        <td class="center">7</td>
+                        <td>78,125</td>
+                        <td>$976.56</td>
+                      </tr>
+                      <tr>
+                        <td class="center">8</td>
+                        <td>3,90,625</td>
+                        <td>$4,882.81</td>
+                      </tr>
+                      <tr>
+                        <td class="center">9</td>
+                        <td>19,53,125</td>
+                        <td>$24,414.06</td>
+                      </tr>
+                      <tr>
+                        <td class="center">10</td>
+                        <td>97,65,625</td>
+                        <td class="accent-gold">$1,22,070.31</td>
+                      </tr>
+                      <tr style="background: rgba(212, 175, 55, 0.08)">
+                        <td colspan="2" style="font-weight: 700">
+                          Total Daily
+                        </td>
+                        <td class="accent-gold" style="font-weight: 700">
+                          $1,52,636.81
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ECOSYSTEM REWARDS BAND -->
+        <div class="band band-eco section-full" style="margin-top: 60px">
+          <div class="band-icon">🚀</div>
+          <div>
+            <div class="band-text" style="color: var(--gold)">
+              ECOSYSTEM REWARDS — Streams 6 · 7
+            </div>
+            <div class="band-sub">
+              Leadership pool income & lucky draw jackpots
+            </div>
+          </div>
+        </div>
+
+        <div class="section-inner" style="margin-top: 48px">
+          <!-- Income 6: Club -->
+          <div class="reveal" style="margin-bottom: 60px">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                margin-bottom: 24px;
+              "
+            >
+              <div
+                class="income-num num-gold"
+                style="width: 56px; height: 56px; font-size: 1.1rem"
+              >
+                6
+              </div>
+              <div>
+                <div
+                  style="
+                    font-family: &quot;Orbitron&quot;, sans-serif;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                  "
+                >
+                  🏢 Club Income — Daily Turnover Share
+                </div>
+                <div
+                  style="
+                    font-size: 0.9rem;
+                    color: var(--text-muted);
+                    margin-top: 4px;
+                  "
+                >
+                  8% of total company turnover distributed daily to ranked
+                  leaders
+                </div>
+              </div>
+            </div>
+            <div class="info-box info-gold" style="margin-bottom: 24px">
+              <span class="info-icon">⚖️</span>
+              <div class="info-text">
+                <strong>Qualification Rule (50/50 Balance):</strong> 50% volume
+                from your strongest leg + 50% from all combined remaining legs.
+                Ensures fair growth and prevents one-sided stacking.
+              </div>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Pool Share</th>
+                    <th>Target Volume (USDT)</th>
+                    <th>Example Daily Income*</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="accent-gold">Rank 1</td>
+                    <td class="accent-gold">2%</td>
+                    <td>10,000</td>
+                    <td>~$1,600</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-gold">Rank 2</td>
+                    <td class="accent-gold">2%</td>
+                    <td>50,000</td>
+                    <td>~$1,600</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-gold">Rank 3</td>
+                    <td class="accent-gold">1%</td>
+                    <td>2,50,000</td>
+                    <td>~$800</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-gold">Rank 4</td>
+                    <td class="accent-gold">1%</td>
+                    <td>10,00,000</td>
+                    <td>~$800</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-gold">Rank 5</td>
+                    <td class="accent-gold">1%</td>
+                    <td>50,00,000</td>
+                    <td>~$800</td>
+                  </tr>
+                  <tr>
+                    <td class="accent-gold">Rank 6</td>
+                    <td class="accent-gold">1%</td>
+                    <td>1,00,00,000</td>
+                    <td>~$800</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p
+              style="
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                margin-top: 12px;
+              "
+            >
+              * Example assumes $1,000,000 daily turnover. Actual income depends
+              on total turnover and qualified members at each rank.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════
+     LUCKY DRAW
+═══════════════════════════════════════════════ -->
+      <div class="divider"></div>
+      <section id="luckydraw">
+        <div class="section-header reveal">
+          <span class="section-label">// Stream 7 — Jackpot</span>
+          <h2 class="section-title">
+            🎰 Lucky Draw<br /><span class="accent">Income System</span>
+          </h2>
+          <p class="section-desc">
+            Smart contract–powered jackpot pools. Every 1 in 10 participants
+            wins. 10,000 tickets per round, automated draw, instant payouts — no
+            human control, no manipulation.
+          </p>
+        </div>
+
+        <div class="draw-grid reveal">
+          <div class="draw-card draw-gold">
+            <div class="draw-header">
+              <span class="draw-icon">💎</span>
+              <div class="draw-name">GOLDEN LUCKY DRAW</div>
+              <div class="draw-fee">10 USDT</div>
+              <div class="draw-pool">Total Prize Pool: 70,000 USDT</div>
+              <div
+                style="
+                  font-size: 0.8rem;
+                  color: var(--text-muted);
+                  margin-top: 8px;
+                "
+              >
+                10,000 Tickets &nbsp;•&nbsp; 1,000 Winners &nbsp;•&nbsp; 10% Win
+                Rate
+              </div>
+            </div>
+            <div class="draw-body">
+              <div class="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th class="center">Prize</th>
+                      <th class="center">Winners</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>🥇 1st Prize</td>
+                      <td class="center accent-gold">10,000 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>🥈 2nd Prize</td>
+                      <td class="center">5,000 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>🥉 3rd Prize</td>
+                      <td class="center">4,000 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>4th – 10th</td>
+                      <td class="center">1,000 USDT</td>
+                      <td class="center">7</td>
+                    </tr>
+                    <tr>
+                      <td>11th – 50th</td>
+                      <td class="center">300 USDT</td>
+                      <td class="center">40</td>
+                    </tr>
+                    <tr>
+                      <td>51st – 100th</td>
+                      <td class="center">120 USDT</td>
+                      <td class="center">50</td>
+                    </tr>
+                    <tr>
+                      <td>101st – 500th</td>
+                      <td class="center">40 USDT</td>
+                      <td class="center">400</td>
+                    </tr>
+                    <tr>
+                      <td>501st – 1000th</td>
+                      <td class="center">20 USDT</td>
+                      <td class="center">500</td>
+                    </tr>
+                    <tr style="background: rgba(212, 175, 55, 0.08)">
+                      <td><strong>Total</strong></td>
+                      <td class="center accent-gold">
+                        <strong>70,000 USDT</strong>
+                      </td>
+                      <td class="center accent-gold"><strong>1,000</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="draw-card draw-silver">
+            <div class="draw-header">
+              <span class="draw-icon">🥈</span>
+              <div class="draw-name">SILVER LUCKY DRAW</div>
+              <div class="draw-fee">1 USDT</div>
+              <div class="draw-pool">Total Prize Pool: 7,000 USDT</div>
+              <div
+                style="
+                  font-size: 0.8rem;
+                  color: var(--text-muted);
+                  margin-top: 8px;
+                "
+              >
+                10,000 Tickets &nbsp;•&nbsp; 1,000 Winners &nbsp;•&nbsp; 10% Win
+                Rate
+              </div>
+            </div>
+            <div class="draw-body">
+              <div class="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th class="center">Prize</th>
+                      <th class="center">Winners</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>🥇 1st Prize</td>
+                      <td class="center accent-cyan">1,000 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>🥈 2nd Prize</td>
+                      <td class="center">500 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>🥉 3rd Prize</td>
+                      <td class="center">400 USDT</td>
+                      <td class="center">1</td>
+                    </tr>
+                    <tr>
+                      <td>4th – 10th</td>
+                      <td class="center">100 USDT</td>
+                      <td class="center">7</td>
+                    </tr>
+                    <tr>
+                      <td>11th – 50th</td>
+                      <td class="center">30 USDT</td>
+                      <td class="center">40</td>
+                    </tr>
+                    <tr>
+                      <td>51st – 100th</td>
+                      <td class="center">12 USDT</td>
+                      <td class="center">50</td>
+                    </tr>
+                    <tr>
+                      <td>101st – 500th</td>
+                      <td class="center">4 USDT</td>
+                      <td class="center">400</td>
+                    </tr>
+                    <tr>
+                      <td>501st – 1000th</td>
+                      <td class="center">2 USDT</td>
+                      <td class="center">500</td>
+                    </tr>
+                    <tr style="background: rgba(0, 212, 255, 0.06)">
+                      <td><strong>Total</strong></td>
+                      <td class="center accent-cyan">
+                        <strong>7,000 USDT</strong>
+                      </td>
+                      <td class="center accent-cyan"><strong>1,000</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto Funding -->
+        <div class="reveal">
+          <h3
+            style="
+              font-family: &quot;Orbitron&quot;, sans-serif;
+              font-size: 1.1rem;
+              color: var(--gold);
+              margin-bottom: 20px;
+              letter-spacing: 2px;
+            "
+          >
+            ⚙️ Automatic Lucky Draw Entry System
+          </h3>
+          <div class="three-col">
+            <div class="feat-card">
+              <span class="feat-icon">💸</span>
+              <div class="feat-title">Auto-Credit Daily</div>
+              <div class="feat-text">
+                20% of Losers Profit earnings auto-transferred equally to both
+                Golden and Silver Draw wallets each day
+              </div>
+            </div>
+            <div class="feat-card">
+              <span class="feat-icon">🎟️</span>
+              <div class="feat-title">Auto-Entry</div>
+              <div class="feat-text">
+                Once wallet balance covers ≥1 ticket, entry is purchased
+                automatically — continuous participation with zero effort
+              </div>
+            </div>
+            <div class="feat-card">
+              <span class="feat-icon">➕</span>
+              <div class="feat-title">Manual Top-Up</div>
+              <div class="feat-text">
+                Optionally deposit directly to either draw wallet anytime to buy
+                more tickets and increase win probability
+              </div>
+            </div>
+          </div>
+          <div class="info-box info-gold" style="margin-top: 24px">
+            <span class="info-icon">📌</span>
+            <div class="info-text">
+              <strong>Flow:</strong> Cashback Earned → 20% Auto-Credit → Lucky
+              Draw Wallet → Auto Ticket Purchase → Draw Participation. Your loss
+              recovery funds create new winning opportunities automatically.
+            </div>
+          </div>
+        </div>
+
+        <!-- Withdrawal Policy -->
+        <div class="reveal" style="margin-top: 60px">
+          <h3
+            style="
+              font-family: &quot;Orbitron&quot;, sans-serif;
+              font-size: 1.1rem;
+              color: var(--gold);
+              margin-bottom: 20px;
+              letter-spacing: 2px;
+            "
+          >
+            💳 Withdrawal Policy
+          </h3>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Minimum Withdrawal</td>
+                  <td class="accent-green">5 USDT</td>
+                </tr>
+                <tr>
+                  <td>Maximum Withdrawal</td>
+                  <td class="accent-green">5,000 USDT / day</td>
+                </tr>
+                <tr>
+                  <td>Sustainability Fee</td>
+                  <td class="accent-gold">10%</td>
+                </tr>
+                <tr>
+                  <td>Payout Method</td>
+                  <td>Automatic Smart Contract</td>
+                </tr>
+                <tr>
+                  <td>Network</td>
+                  <td class="accent-cyan">BEP-20 Only</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- ═══════════════════════════════════════════════
+     ROADMAP
+═══════════════════════════════════════════════ -->
+      <section id="roadmap">
+        <div class="section-header reveal">
+          <span class="section-label">// TRK Token</span>
+          <h2 class="section-title">
+            Token <span class="accent">Roadmap</span>
+          </h2>
+          <p class="section-desc">
+            A phased transition from 100% USDT to a full TRK Token Economy —
+            increasing utility, scarcity, and long-term value.
+          </p>
+        </div>
+
+        <div class="roadmap reveal">
+          <div class="road-item">
+            <div class="road-dot road-1">PH1</div>
+            <div class="road-content">
+              <div class="road-phase">Phase 1 — Current</div>
+              <div class="road-title" style="color: var(--gold)">100% USDT</div>
+              <div class="road-desc">
+                All transactions, deposits, and payouts exclusively in USDT
+                (BEP-20). Maximum stability and accessibility for early
+                participants.
+              </div>
+            </div>
+          </div>
+          <div class="road-item">
+            <div class="road-dot road-2">PH2</div>
+            <div class="road-content">
+              <div class="road-phase">Phase 2 — Transition</div>
+              <div class="road-title" style="color: var(--cyan)">
+                USDT or TRK Token
+              </div>
+              <div class="road-desc">
+                TRK Token introduced as an alternative payment option alongside
+                USDT. Users may choose their preferred currency.
+              </div>
+            </div>
+          </div>
+          <div class="road-item">
+            <div class="road-dot road-3">PH3</div>
+            <div class="road-content">
+              <div class="road-phase">Phase 3 — Hybrid</div>
+              <div class="road-title" style="color: var(--green)">
+                50/50 Hybrid Economy
+              </div>
+              <div class="road-desc">
+                Equal split between USDT and TRK Token for all ecosystem
+                activities — driving token demand and ecosystem growth
+                simultaneously.
+              </div>
+            </div>
+          </div>
+          <div class="road-item">
+            <div class="road-dot road-4">PH4</div>
+            <div class="road-content">
+              <div class="road-phase">Phase 4 — Full Token</div>
+              <div class="road-title" style="color: #a855f7">
+                100% TRK Token Economy
+              </div>
+              <div class="road-desc">
+                Complete migration to TRK Token. Full utility, increased
+                scarcity, and long-term deflationary token value for all
+                ecosystem participants.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- ═══════════════════════════════════════════════
+     SECURITY
+═══════════════════════════════════════════════ -->
+      <section>
+        <div class="section-header reveal">
+          <span class="section-label">// Security & Compliance</span>
+          <h2 class="section-title">
+            Platform <span class="accent">Policies</span>
+          </h2>
+        </div>
+        <div class="security-grid reveal">
+          <div class="sec-card">
+            <span class="sec-icon">🔞</span>
+            <div class="sec-text">
+              <strong>18+ Only</strong>Strict age verification policy for all
+              participants
+            </div>
+          </div>
+          <div class="sec-card">
+            <span class="sec-icon">👤</span>
+            <div class="sec-text">
+              <strong>One Account Policy</strong>Single account per user — no
+              duplication permitted
+            </div>
+          </div>
+          <div class="sec-card">
+            <span class="sec-icon">🔑</span>
+            <div class="sec-text">
+              <strong>Self-Custody Wallets</strong>You hold your own keys —
+              MetaMask, Trust Wallet, SafePal
+            </div>
+          </div>
+          <div class="sec-card">
+            <span class="sec-icon">⛓️</span>
+            <div class="sec-text">
+              <strong>BEP-20 Only</strong>All transactions exclusively on
+              Binance Smart Chain
+            </div>
+          </div>
+          <div class="sec-card">
+            <span class="sec-icon">📜</span>
+            <div class="sec-text">
+              <strong>Smart Contract Automation</strong>Zero manual interference
+              — fully automated payouts
+            </div>
+          </div>
+          <div class="sec-card">
+            <span class="sec-icon">🔍</span>
+            <div class="sec-text">
+              <strong>On-Chain Transparent</strong>Every transaction publicly
+              verifiable on-chain
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════
+     VISION / CTA
+═══════════════════════════════════════════════ -->
+      <div class="divider"></div>
+      <div class="vision-block">
+        <div class="vision-inner reveal">
+          <span class="vision-icon">🌐</span>
+          <h2 class="vision-title">The Final Vision</h2>
+          <p class="vision-text">
+            The world's first sustainable real-cash blockchain gaming ecosystem
+            with built-in loss protection and multi-income opportunities. A
+            platform where players win, teams grow, capital is protected, and
+            income never stops.
+          </p>
+          <div class="vision-pillars">
+            <div class="pillar">🎮 Players Win</div>
+            <div class="pillar">🌐 Teams Grow</div>
+            <div class="pillar">🛡️ Capital Protected</div>
+            <div class="pillar">♾️ Income Never Stops</div>
+          </div>
+          <div class="hero-cta">
+            <a href="#practice" class="btn btn-primary">🚀 Start Playing Now</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <footer>
+        <div class="footer-logo">⛓ TRK BLOCKCHAIN</div>
+        <div class="footer-sub">
+          ® Real Cash Game Ecosystem — Built on Binance Smart Chain (BEP-20)
+        </div>
+        <div class="footer-badges">
+          <div
+            class="badge badge-gold"
+            style="font-size: 0.8rem; padding: 8px 16px"
+          >
+            🌐 Decentralized
+          </div>
+          <div
+            class="badge badge-cyan"
+            style="font-size: 0.8rem; padding: 8px 16px"
+          >
+            ⚡ Auto-Payouts
+          </div>
+          <div
+            class="badge badge-green"
+            style="font-size: 0.8rem; padding: 8px 16px"
+          >
+            🔒 Self-Custody
+          </div>
+        </div>
+        <div class="footer-note">
+          ⚠️ Risk Notice: Participate responsibly. Cryptocurrency and blockchain
+          gaming involve financial risk. Past performance does not guarantee
+          future results. All income projections are theoretical illustrations
+          only. 18+ participants only.
+        </div>
+      </footer>
+    </div>
+    <!-- /wrapper -->
+
+    <!-- ═══════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════ -->
+    <script>
+      /* ─ Particle Canvas ─ */
+      const canvas = document.getElementById("canvas-bg");
+      const ctx = canvas.getContext("2d");
+      let W,
+        H,
+        particles = [];
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener("resize", resize);
+
+      function randomColor() {
+        const cols = ["rgba(212,175,55,", "rgba(0,212,255,", "rgba(0,255,157,"];
+        return cols[Math.floor(Math.random() * cols.length)];
+      }
+
+      for (let i = 0; i < 80; i++) {
+        particles.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight,
+          r: Math.random() * 1.5 + 0.3,
+          dx: (Math.random() - 0.5) * 0.4,
+          dy: (Math.random() - 0.5) * 0.4,
+          col: randomColor(),
+          a: Math.random() * 0.5 + 0.1,
+          pulse: Math.random() * Math.PI * 2,
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const t = Date.now() / 1000;
+        particles.forEach((p) => {
+          p.x += p.dx;
+          p.y += p.dy;
+          p.pulse += 0.02;
+          if (p.x < 0) p.x = W;
+          if (p.x > W) p.x = 0;
+          if (p.y < 0) p.y = H;
+          if (p.y > H) p.y = 0;
+          const alpha = p.a * (0.6 + 0.4 * Math.sin(p.pulse));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.col + alpha + ")";
+          ctx.fill();
+        });
+        // draw lines between close particles
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 100) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(212,175,55,${0.04 * (1 - d / 100)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+
+      /* ─ Scroll Reveal ─ */
+      const reveals = document.querySelectorAll(".reveal");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+              setTimeout(() => entry.target.classList.add("visible"), i * 80);
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08, rootMargin: "0px 0px -60px 0px" },
+      );
+      reveals.forEach((el) => observer.observe(el));
+
+      /* ─ Nav highlight ─ */
+      const navLinks = document.querySelectorAll(".nav-links a");
+      const sections = document.querySelectorAll("section[id]");
+      window.addEventListener("scroll", () => {
+        let current = "";
+        sections.forEach((s) => {
+          if (window.scrollY >= s.offsetTop - 120) current = s.id;
+        });
+        navLinks.forEach((a) => {
+          a.style.color =
+            a.getAttribute("href") === "#" + current ? "var(--gold)" : "";
+        });
+      });
+    </script>
+  </body>
+</html>

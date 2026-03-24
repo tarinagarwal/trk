@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: trk-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trk-backend
+    ports:
+      - "3001:3001"
+    # No ports exposed here, nginx handles it via internal network (Admin Note: Exposing for host dev)
+    environment:
+      - REDIS_URL=redis://trk-redis:6379
+      - PORT=3001
+      - DATABASE_URL=file:/app/prisma/dev.db
+      - RPC_URL=http://host.docker.internal:8545
+      - START_BLOCK=0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend/prisma:/app/prisma
+    env_file:
+      - ./backend/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-/api}
+        - NEXT_PUBLIC_WC_PROJECT_ID=${NEXT_PUBLIC_WC_PROJECT_ID:-b39f3c8086af314bb6613ef6b4ad7857}
+        - NEXT_PUBLIC_RPC_URL=${NEXT_PUBLIC_RPC_URL:-https://bsc-dataseed.binance.org}
+        - NEXT_PUBLIC_ENABLE_TESTNETS=${NEXT_PUBLIC_ENABLE_TESTNETS:-false}
+        - NEXT_PUBLIC_ETHERSCAN_API_KEY=${NEXT_PUBLIC_ETHERSCAN_API_KEY:-4ZXQ8A2II935TCHRCTIW1QSIGW3U9YR1JV}
+    container_name: trk-frontend
+    # No ports exposed here, nginx handles it
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-/api}
+    env_file:
+      - .env.local
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: trk-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
