@@ -107,7 +107,10 @@ export default function UsersTab() {
     return userAddresses
       .map((addr, idx) => {
         const res = userInfoData[idx];
-        if (res.status !== "success") return null;
+        if (res.status !== "success") {
+          console.warn(`Contract read failed for user ${addr}:`, res);
+          return null;
+        }
         const u = res.result as any;
         const backendUser = backendUsers.find(
           (b: any) => b.address.toLowerCase() === addr.toLowerCase(),
@@ -228,8 +231,13 @@ export default function UsersTab() {
             <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
               {loading
                 ? `Syncing [LIVE]`
-                : `System Online • ${backendUsers.length} Users`}
+                : `System Online • ${users.length}/${backendUsers.length} Users Loaded`}
             </span>
+            {backendUsers.length > users.length && !loading && (
+              <span className="text-[10px] font-mono text-yellow-500 uppercase tracking-widest">
+                ⚠ {backendUsers.length - users.length} failed to load
+              </span>
+            )}
           </div>
         </div>
 
@@ -239,16 +247,26 @@ export default function UsersTab() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <select
-          value={windowMode}
-          onChange={(e) => setWindowMode(e.target.value as any)}
-          className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm w-full md:w-48 outline-none font-mono"
-        >
-          <option value="24h">New activity: 24h</option>
-          <option value="7d">New activity: 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="all">All users (full history)</option>
-        </select>
+        <div className="flex gap-2 w-full md:w-auto">
+          <select
+            value={windowMode}
+            onChange={(e) => setWindowMode(e.target.value as any)}
+            className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm flex-1 md:flex-none md:w-48 outline-none font-mono"
+          >
+            <option value="24h">New activity: 24h</option>
+            <option value="7d">New activity: 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="all">All users (full history)</option>
+          </select>
+          {backendUsers.length > users.length && !loading && (
+            <button
+              onClick={() => refetchUsers()}
+              className="px-4 py-2 rounded-xl text-sm font-mono bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 transition-all"
+            >
+              Retry Failed
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-white/5 bg-black/40 backdrop-blur-md max-w-full no-scrollbar">

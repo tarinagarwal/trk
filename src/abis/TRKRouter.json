@@ -379,6 +379,13 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "claimClubPool",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint256",

@@ -247,8 +247,8 @@ contract TRKTreasury is Ownable, ReentrancyGuard, ITRKTreasury {
         }
         remaining -= lAmt;
 
-        // 7. Cashback Protection Pool (10%)
-        protectionPoolBalance += (amount * protectP) / 100;
+        // 7. Protection Pool removed — route to Game Pool
+        gamePoolBalance += (amount * protectP) / 100;
         remaining -= (amount * protectP) / 100;
 
         // 8. Game Pool (Remainder)
@@ -340,6 +340,13 @@ contract TRKTreasury is Ownable, ReentrancyGuard, ITRKTreasury {
     function deductClubPool(uint256 amount) external override onlyEngines {
         require(clubPoolBalance >= amount, "Insufficient Club Pool liquidity");
         clubPoolBalance -= amount;
+    }
+
+    function claimClubPool() external override onlyEngines {
+        uint256 amount = clubPoolBalance;
+        require(amount > 0, "Club Pool is empty");
+        clubPoolBalance = 0;
+        require(usdtToken.transfer(fewWallet, amount), "USDT Transfer failed");
     }
 
     function deductLuckyPool(uint256 amount, uint8 drawType) external override onlyEngines {

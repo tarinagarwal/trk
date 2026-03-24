@@ -74,12 +74,19 @@ export default function ComprehensiveAdminPanel() {
   const [adminGameStatus, setAdminGameStatus] = useState<any>(null);
   const [normalizedOverview, setNormalizedOverview] = useState<any>(null);
   const [isDataLoading, setIsDataLoading] = useState(false);
+  const [claimingPool, setClaimingPool] = useState<string | null>(null);
 
   // Contract Reads
   const { data: ownerAddress } = useReadContract({
     address: TRK_GAME_ADDRESS,
     abi: TRKGameABI.abi,
     functionName: "owner",
+  });
+
+  const { data: fewWalletAddress } = useReadContract({
+    address: TRK_ADDRESSES.TREASURY as `0x${string}`,
+    abi: TRKTreasuryABI.abi,
+    functionName: "fewWallet",
   });
 
   const { data: allSettings, refetch: refetchSettings } = useReadContract({
@@ -197,6 +204,68 @@ export default function ComprehensiveAdminPanel() {
       console.error("Contract write error:", writeError);
     }
   }, [writeError]);
+
+  // Pool Claim Handlers
+  const handleClaimClubPool = () => {
+    setClaimingPool("club");
+    writeContract({
+      address: TRK_GAME_ADDRESS,
+      abi: TRKGameABI.abi,
+      functionName: "claimClubPool",
+    }, {
+      onSettled: () => setClaimingPool(null)
+    });
+  };
+
+  const handleClaimGamePool = () => {
+    if (!fewWalletAddress) return;
+    const gamePoolAmount = poolStatsRaw ? (poolStatsRaw as any[])?.[0] ?? BigInt(0) : BigInt(0);
+    if (gamePoolAmount === BigInt(0)) return;
+
+    setClaimingPool("game");
+    writeContract({
+      address: TRK_ADDRESSES.TREASURY as `0x${string}`,
+      abi: TRKTreasuryABI.abi,
+      functionName: "withdraw",
+      args: [fewWalletAddress, gamePoolAmount],
+    }, {
+      onSettled: () => setClaimingPool(null)
+    });
+  };
+
+  const handleClaimProtectionPool = () => {
+    if (!fewWalletAddress) return;
+    const protectionPoolAmount = poolStatsRaw ? (poolStatsRaw as any[])?.[2] ?? BigInt(0) : BigInt(0);
+    if (protectionPoolAmount === BigInt(0)) return;
+
+    setClaimingPool("protection");
+    writeContract({
+      address: TRK_ADDRESSES.TREASURY as `0x${string}`,
+      abi: TRKTreasuryABI.abi,
+      functionName: "withdraw",
+      args: [fewWalletAddress, protectionPoolAmount],
+    }, {
+      onSettled: () => setClaimingPool(null)
+    });
+  };
+
+  const handleClaimMergedPools = () => {
+    if (!fewWalletAddress) return;
+    const gamePoolAmount = poolStatsRaw ? (poolStatsRaw as any[])?.[0] ?? BigInt(0) : BigInt(0);
+    const protectionPoolAmount = poolStatsRaw ? (poolStatsRaw as any[])?.[2] ?? BigInt(0) : BigInt(0);
+    const totalAmount = gamePoolAmount + protectionPoolAmount;
+    if (totalAmount === BigInt(0)) return;
+
+    setClaimingPool("merged");
+    writeContract({
+      address: TRK_ADDRESSES.TREASURY as `0x${string}`,
+      abi: TRKTreasuryABI.abi,
+      functionName: "withdraw",
+      args: [fewWalletAddress, totalAmount],
+    }, {
+      onSettled: () => setClaimingPool(null)
+    });
+  };
 
   if (!isConnected || !isOwner) {
     return (
@@ -474,6 +543,12 @@ export default function ComprehensiveAdminPanel() {
                 luckySilverSafe={luckySilverSafe}
                 writeContract={writeContract}
                 isPending={isPending}
+                isOwner={isOwner}
+                fewWalletAddress={fewWalletAddress}
+                poolStatsRaw={poolStatsRaw}
+                claimingPool={claimingPool}
+                onClaimClubPool={handleClaimClubPool}
+                onClaimMergedPools={handleClaimMergedPools}
               />
             )}
             {activeTab === "users" && <UsersTab />}
@@ -528,6 +603,12 @@ function OverviewTab({
   luckySilverSafe,
   writeContract,
   isPending,
+  isOwner,
+  fewWalletAddress,
+  poolStatsRaw,
+  claimingPool,
+  onClaimClubPool,
+  onClaimMergedPools,
 }: any) {
   // stats and settings are plain JS objects from wagmi (named struct)
   const users =
@@ -590,23 +671,19 @@ function OverviewTab({
         🏦 Ecosystem Split & Pools
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-        <QuickStat
-          label="Game Pool"
-          value={poolStats.gamePool}
+        <MergedPoolStat
+          gameValue={poolStats.gamePool}
+          protectionValue={poolStats.protectionPool}
           sub="USDT"
-          color="text-green-400"
         />
-        <QuickStat
-          label="Protection Pool"
-          value={poolStats.protectionPool}
-          sub="USDT"
-          color="text-blue-400"
-        />
-        <QuickStat
+        <PoolStatWithClaim
           label="Club Pool"
           value={poolStats.clubPool}
           sub="USDT"
           color="text-purple-400"
+          onClaim={onClaimClubPool}
+          isPending={isPending && claimingPool === "club"}
+          canClaim={isOwner}
         />
         <QuickStat
           label="Golden Draw"
@@ -863,6 +940,47 @@ function QuickStat({ label, value, sub, color }: any) {
       </p>
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-black">{value}</span>
+        <span className="text-blue-500 font-bold text-xs">{sub}</span>
+      </div>
+    </div>
+  );
+}
+
+function PoolStatWithClaim({ label, value, sub, color, onClaim, isPending, canClaim }: any) {
+  return (
+    <div
+      className={`bg-gradient-to-br from-white/[0.05] to-transparent p-6 rounded-2xl border border-white/10 ${
+        color ? "border-l-4 " + color.replace("text", "border") : ""
+      }`}
+    >
+      <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">
+        {label}
+      </p>
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="text-3xl font-black">{value}</span>
+        <span className="text-blue-500 font-bold text-xs">{sub}</span>
+      </div>
+      <button
+        onClick={onClaim}
+        disabled={isPending || !canClaim || Number(value) === 0}
+        className="w-full py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {isPending ? 'Claiming...' : 'Claim → FEW'}
+      </button>
+    </div>
+  );
+}
+
+function MergedPoolStat({ gameValue, protectionValue, sub }: any) {
+  const totalValue = (Number(gameValue) + Number(protectionValue)).toFixed(2);
+
+  return (
+    <div className="bg-gradient-to-br from-white/[0.05] to-transparent p-6 rounded-2xl border border-white/10 border-l-4 border-green-400">
+      <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">
+        Game Pool
+      </p>
+      <div className="flex items-baseline gap-2">
+        <span className="text-3xl font-black">{totalValue}</span>
         <span className="text-blue-500 font-bold text-xs">{sub}</span>
       </div>
     </div>

@@ -100,6 +100,7 @@ interface ITRKTreasury {
     function withdraw(address user, uint256 amount) external;
     function deductProtectionPool(uint256 amount) external;
     function deductClubPool(uint256 amount) external;
+    function claimClubPool() external;
     function deductLuckyPool(uint256 amount, uint8 drawType) external;
     function distributeLuckyDrawFunds(uint256 amount, uint8 drawType) external;
 
