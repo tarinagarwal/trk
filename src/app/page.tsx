@@ -1552,7 +1552,7 @@ function IncomeSection() {
             >
               Win the game and receive an instant 8× multiplier on your entry.
               First 10,000 users get 8× (2× cash + 6× replay). Subsequent users
-              receive 4× (1× cash + 3× replay).
+              receive 4× (2× cash + 2× replay).
             </p>
             <div className="tbl-wrap">
               <table>
@@ -1578,8 +1578,8 @@ function IncomeSection() {
                     <td style={{ color: "var(--cyan)", fontWeight: 600 }}>
                       4×
                     </td>
-                    <td style={{ color: "var(--green)" }}>1×</td>
-                    <td>3×</td>
+                    <td style={{ color: "var(--green)" }}>2×</td>
+                    <td>2×</td>
                   </tr>
                 </tbody>
               </table>
