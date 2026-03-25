@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { formatUnits } from 'viem';
 import { API_ENDPOINTS } from '../config/backend';
 import { useEffect } from 'react';
+import { TRK_ADDRESSES } from '../config/contractAddresses';
+import TRKGameEngineABI from '../abis/TRKGameEngine.json';
 
 export default function UserBetHistory() {
     const { address } = useAccount();
+    const publicClient = usePublicClient();
     const [mode, setMode] = useState<'practice' | 'cash'>('practice');
     
     const isPractice = mode === 'practice';
@@ -27,25 +30,61 @@ export default function UserBetHistory() {
         if (!address) return;
         setIsLoading(true);
         try {
-            const [historyRes, roundsRes] = await Promise.all([
+            const [historyRes, roundsRes] = await Promise.allSettled([
                 fetch(API_ENDPOINTS.GET_HISTORY(address)),
                 fetch(API_ENDPOINTS.GET_ROUNDS)
             ]);
-            const [historyData, roundsData] = await Promise.all([
-                historyRes.json(),
-                roundsRes.json()
-            ]);
+            const historyData = historyRes.status === 'fulfilled' ? await historyRes.value.json() : null;
+            const roundsData = roundsRes.status === 'fulfilled' ? await roundsRes.value.json() : null;
 
-            if (historyData.success && roundsData.success) {
+            if (historyData?.success) {
                 const targetIsCash = !isPractice;
                 const bets = historyData.bets.filter((b: any) => toBool(b.isCash) === targetIsCash);
-                const rounds = roundsData.rounds;
+                const rounds = roundsData?.success ? roundsData.rounds : [];
+
+                // Fallback: read missing round status from chain when backend round sync is behind.
+                const roundsByKey = new Map<string, any>();
+                for (const r of rounds) {
+                    roundsByKey.set(`${toBool(r.isCash)}-${Number(r.roundId)}`, r);
+                }
+
+                if (publicClient && bets.length > 0) {
+                    const missingRoundIds: number[] = Array.from(new Set(
+                        bets
+                            .map((b: any) => Number(b.roundId))
+                            .filter((id: number) => !roundsByKey.has(`${targetIsCash}-${id}`))
+                    ));
+
+                    if (missingRoundIds.length > 0) {
+                        const contracts = missingRoundIds.map((id: number) => ({
+                            address: TRK_ADDRESSES.GAME,
+                            abi: TRKGameEngineABI.abi,
+                            functionName: targetIsCash ? 'cashRounds' : 'practiceRounds',
+                            args: [BigInt(id)]
+                        }));
+
+                        const onchainRounds = await publicClient.multicall({
+                            contracts: contracts as any,
+                            allowFailure: true,
+                        });
+
+                        onchainRounds.forEach((resp: any, idx: number) => {
+                            if (resp?.status !== 'success' || !resp.result) return;
+                            const result = resp.result as any;
+                            const roundId = Number(result?.roundId ?? result?.[0] ?? missingRoundIds[idx]);
+                            const winningNumber = Number(result?.winningNumber ?? result?.[1] ?? 0);
+                            const isClosed = Boolean(result?.isClosed ?? result?.[2] ?? false);
+                            roundsByKey.set(`${targetIsCash}-${roundId}`, { roundId, winningNumber, isCash: targetIsCash, isClosed });
+                        });
+                    }
+                }
 
                 const list = bets.map((bet: any) => {
                     const betIsCash = toBool(bet.isCash);
-                    const round = rounds.find((r: any) => r.roundId === bet.roundId && toBool(r.isCash) === betIsCash);
-                    const isClosed = !!round;
-                    const winningNumber = round ? round.winningNumber : null;
+                    const key = `${betIsCash}-${Number(bet.roundId)}`;
+                    const round = roundsByKey.get(key);
+                    const isClosed = Boolean(round?.isClosed ?? false);
+                    const winningNumber = isClosed ? Number(round?.winningNumber) : null;
                     const isWin = isClosed && bet.prediction === winningNumber;
                     const amountBI = BigInt(bet.amount);
 
@@ -79,7 +118,7 @@ export default function UserBetHistory() {
 
     useEffect(() => {
         fetchHistory();
-    }, [address, mode]);
+    }, [address, mode, publicClient]);
 
     return (
         <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
