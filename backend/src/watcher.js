@@ -1,5 +1,12 @@
-const { createPublicClient, http, parseAbiItem } = require("viem");
+const {
+  createPublicClient,
+  createWalletClient,
+  http,
+  parseAbiItem,
+  parseAbi,
+} = require("viem");
 const { bsc } = require("viem/chains");
+const { privateKeyToAccount } = require("viem/accounts");
 const { PrismaClient } = require("@prisma/client");
 const { createClient } = require("redis");
 require("dotenv").config();
@@ -10,6 +17,24 @@ const client = createPublicClient({
   chain: bsc,
   transport: http(process.env.RPC_URL),
 });
+
+// Wallet client for sending transactions (triggerPracticeReferral)
+let walletClient = null;
+if (process.env.PRIVATE_KEY) {
+  const account = privateKeyToAccount(
+    `0x${process.env.PRIVATE_KEY.replace("0x", "")}`,
+  );
+  walletClient = createWalletClient({
+    account,
+    chain: bsc,
+    transport: http(process.env.RPC_URL),
+  });
+  console.log("🔑 Wallet client initialized for practice referral triggers");
+}
+
+const ROUTER_ABI = parseAbi([
+  "function triggerPracticeReferral(address user) external",
+]);
 
 // Configure Redis
 const redisClient = createClient({
@@ -280,6 +305,32 @@ async function handleLogs(logs, eventName) {
               timestamp: ts,
             },
           });
+          // Trigger practice referral distribution for the new user
+          if (
+            walletClient &&
+            args.referrer &&
+            args.referrer !== "0x0000000000000000000000000000000000000000"
+          ) {
+            try {
+              const txHash = await walletClient.writeContract({
+                address: process.env.ROUTER_ADDRESS,
+                abi: ROUTER_ABI,
+                functionName: "triggerPracticeReferral",
+                args: [args.user],
+              });
+              console.log(
+                `🎁 Practice referral triggered for ${args.user.slice(
+                  0,
+                  10,
+                )}... | Tx: ${txHash.slice(0, 10)}...`,
+              );
+            } catch (e) {
+              console.error(
+                `Failed to trigger practice referral for ${args.user}:`,
+                e.message,
+              );
+            }
+          }
           break;
         case "IncomeReceived":
           await ensureUserExists(args.user);
