@@ -189,6 +189,12 @@ contract TRKRouter is Ownable { // NEW: Inherit Ownable
         registry.registerUser(msg.sender, referrer, bonus);
     }
 
+    // Backend oracle: call after register() to distribute practice referral rewards up the chain.
+    // Kept separate so registration tx stays cheap regardless of referral tree depth.
+    function triggerPracticeReferral(address user) external onlyOwner {
+        registry.triggerPracticeReferral(user);
+    }
+
     function depositCashGame(uint256 amount) external {
         treasury.deposit(msg.sender, amount);
     }

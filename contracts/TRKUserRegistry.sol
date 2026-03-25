@@ -104,9 +104,6 @@ contract TRKUserRegistry is Ownable, ITRKRegistry {
         if (referrer != address(0)) {
             _users[referrer].directReferrals++;
             directReferralsList[referrer].push(user); // Fix: Add to list
-            if (bonus > 0) {
-                _distributePracticeReferral(user);
-            }
         }
 
         emit UserRegistered(user, referrer, userCounter);
