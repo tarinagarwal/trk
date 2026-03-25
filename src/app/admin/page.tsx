@@ -107,6 +107,15 @@ export default function ComprehensiveAdminPanel() {
     functionName: "getPools",
   });
 
+  const { data: walletsData } = useReadContract({
+    address: TRK_GAME_ADDRESS,
+    abi: TRKGameABI.abi,
+    functionName: "getWallets",
+  });
+  const fewWalletAddress = walletsData
+    ? (walletsData as any).few ?? (walletsData as any[])?.[1]
+    : null;
+
   // Round IDs from Engine
   const { data: currentPracticeId } = useReadContract({
     address: TRK_ADDRESSES.GAME as `0x${string}`,
@@ -474,6 +483,8 @@ export default function ComprehensiveAdminPanel() {
                 luckySilverSafe={luckySilverSafe}
                 writeContract={writeContract}
                 isPending={isPending}
+                poolStatsRaw={poolStatsRaw}
+                fewWalletAddress={fewWalletAddress}
               />
             )}
             {activeTab === "users" && <UsersTab />}
@@ -528,6 +539,8 @@ function OverviewTab({
   luckySilverSafe,
   writeContract,
   isPending,
+  poolStatsRaw,
+  fewWalletAddress,
 }: any) {
   // stats and settings are plain JS objects from wagmi (named struct)
   const users =
@@ -602,12 +615,36 @@ function OverviewTab({
           sub="USDT"
           color="text-blue-400"
         />
-        <QuickStat
-          label="Club Pool"
-          value={poolStats.clubPool}
-          sub="USDT"
-          color="text-purple-400"
-        />
+        <div className="relative">
+          <QuickStat
+            label="Club Pool"
+            value={poolStats.clubPool}
+            sub="USDT"
+            color="text-purple-400"
+          />
+          {fewWalletAddress && Number(poolStats.clubPool) > 0 && (
+            <button
+              onClick={() => {
+                const clubRaw = poolStatsRaw
+                  ? Array.isArray(poolStatsRaw)
+                    ? poolStatsRaw[1]
+                    : (poolStatsRaw as any).clubPool
+                  : BigInt(0);
+                if (!clubRaw || clubRaw === BigInt(0)) return;
+                writeContract({
+                  address: TRK_GAME_ADDRESS,
+                  abi: TRKGameABI.abi,
+                  functionName: "distributeClubIncome",
+                  args: [[fewWalletAddress], [clubRaw]],
+                });
+              }}
+              disabled={isPending}
+              className="absolute bottom-3 left-3 right-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-all disabled:opacity-40"
+            >
+              {isPending ? "..." : "CLAIM → FEW"}
+            </button>
+          )}
+        </div>
         <QuickStat
           label="Golden Draw"
           value={poolStats.goldenPool}
