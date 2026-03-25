@@ -41,15 +41,20 @@ export default function IncomeHistory() {
 
   const totalWinsBigInt =
     dList?.totalWins ?? (userData as any[])?.[23] ?? BigInt(0);
-  const totalWins2xVal = (totalWinsBigInt * BigInt(2)) / BigInt(8);
-  const totalWins6xVal = (totalWinsBigInt * BigInt(6)) / BigInt(8);
 
-  const totalWins2x = formatBal(totalWins2xVal);
-  const totalWins6x = formatBal(totalWins6xVal);
+  // We can't split practice vs cash wins from on-chain totalWins alone.
+  // The cash game winner 2x/6x display will be calculated from backend data instead.
+  // Placeholder — will be overridden in useEffect from backend history.
+  const [cashWinsTotal, setCashWinsTotal] = useState<bigint>(BigInt(0));
+  const cashWins2xVal = (cashWinsTotal * BigInt(2)) / BigInt(8);
+  const cashWins6xVal = (cashWinsTotal * BigInt(6)) / BigInt(8);
+
+  const totalWins2x = formatBal(cashWins2xVal);
+  const totalWins6x = formatBal(cashWins6xVal);
 
   // 2X Logic for Total Income calculation - SUM of ONLY WITHDRAWABLE amounts
-  const withdrawableWins = totalWinsBigInt
-    ? (totalWinsBigInt * BigInt(2)) / BigInt(8)
+  const withdrawableWins = cashWinsTotal
+    ? (cashWinsTotal * BigInt(2)) / BigInt(8)
     : BigInt(0);
 
   // Robust fallbacks for all income fields
@@ -145,9 +150,11 @@ export default function IncomeHistory() {
           }
 
           // Practice winner profit should come from GameWon history (isCash = false)
+          // Cash wins tracked separately for the 2x/6x split display
+          let cw = BigInt(0);
           for (const w of data.winnings || []) {
+            const amt = BigInt(w.amount || "0");
             if (!w?.isCash) {
-              const amt = BigInt(w.amount || "0");
               pw += amt;
               practiceWinTxHashes.add(String(w.hash || "").toLowerCase());
               practiceWinLogs.push({
@@ -157,8 +164,11 @@ export default function IncomeHistory() {
                 timestamp: Number(w.timestamp) || 0,
                 txHash: w.hash,
               });
+            } else {
+              cw += amt;
             }
           }
+          setCashWinsTotal(cw);
 
           const luckyPrizeOnly = (data.incomes || []).reduce(
             (acc: bigint, it: any) => {
