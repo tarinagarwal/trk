@@ -450,7 +450,9 @@ function HistoryItem({ data, isPractice, isNetProfit }: {
     const { roundId, amounts, claimed, winningNumber, isClosed, totalBetAmount } = data;
     const wonAmount = amounts[winningNumber];
     const isWin = isClosed && wonAmount > BigInt(0);
-    const isClaimed = claimed.some((c: boolean) => c);
+    const isClaimed = isWin
+        ? Boolean(claimed[winningNumber])
+        : claimed.some((c: boolean) => c);
 
     const { writeContract: writeClaim, data: claimHash, isPending } = useWriteContract();
     const { isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({ hash: claimHash });

@@ -342,12 +342,6 @@ contract TRKTreasury is Ownable, ReentrancyGuard, ITRKTreasury {
         clubPoolBalance -= amount;
     }
 
-    function claimClubPool() external override onlyEngines {
-        uint256 amount = clubPoolBalance;
-        require(amount > 0, "Club Pool is empty");
-        clubPoolBalance = 0;
-        require(usdtToken.transfer(fewWallet, amount), "USDT Transfer failed");
-    }
 
     function deductLuckyPool(uint256 amount, uint8 drawType) external override onlyEngines {
         if (drawType == 1) {
