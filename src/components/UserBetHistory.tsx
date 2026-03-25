@@ -51,7 +51,12 @@ export default function UserBetHistory() {
         // Build round lookup map
         const roundsByKey = new Map<string, any>();
         for (const r of rounds) {
-          roundsByKey.set(`${toBool(r.isCash)}-${Number(r.roundId)}`, r);
+          // Rounds from /api/rounds are only created when RoundClosed event fires,
+          // so if a round exists in the DB, it IS closed
+          roundsByKey.set(`${toBool(r.isCash)}-${Number(r.roundId)}`, {
+            ...r,
+            isClosed: true,
+          });
         }
 
         // Fallback: read missing round status from chain
