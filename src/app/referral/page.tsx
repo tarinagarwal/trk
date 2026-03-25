@@ -513,15 +513,15 @@ export default function ReferralPage() {
         {[
           { label: "Total Team", val: totalTeamCount, color: "text-primary" },
           {
-            label: "Total Team Cash Balance",
-            val: `${Number(formatUnits(teamTotalCash, 18)).toFixed(2)} USDT`,
+            label: "Total Team Cash Income",
+            val: `${Number(formatUnits(totalCashIncomeVal, 18)).toFixed(
+              2,
+            )} USDT`,
             color: "text-green-400",
           },
           {
-            label: "Total Team Practice Balance",
-            val: `${Number(formatUnits(teamTotalPractice, 18)).toFixed(
-              2,
-            )} USDT`,
+            label: "Total Team Practice Bonus",
+            val: `${Number(formatUnits(pIncomeVal, 18)).toFixed(2)} USDT`,
             color: "text-yellow-500",
           },
         ].map((stat, i) => (
