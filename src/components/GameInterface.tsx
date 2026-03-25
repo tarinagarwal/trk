@@ -744,13 +744,9 @@ function HistoryItem({
               </div>
             )}
           </div>
-        ) : isPractice ? (
-          <div
-            className={`text-[10px] font-black uppercase tracking-widest italic ${
-              isWin ? "text-green-500/60" : "text-red-500/60"
-            }`}
-          >
-            {isWin ? "Win" : "Loss"}
+        ) : isPractice && !isWin ? (
+          <div className="text-[10px] font-black uppercase tracking-widest italic text-red-500/60">
+            Loss
           </div>
         ) : !isWin && isNetProfit ? (
           <div className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest italic">
