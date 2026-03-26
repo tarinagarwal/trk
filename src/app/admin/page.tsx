@@ -639,7 +639,7 @@ function OverviewTab({
                 });
               }}
               disabled={isPending}
-              className="absolute bottom-3 left-3 right-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-all disabled:opacity-40"
+              className="mt-3 w-full py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-all disabled:opacity-40"
             >
               {isPending ? "..." : "CLAIM → FEW"}
             </button>
