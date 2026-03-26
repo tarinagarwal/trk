@@ -247,15 +247,41 @@ async function watchEvents() {
     startBlock = Number(currentBlock);
   }
 
-  for (const config of eventConfigs) {
-    client.watchEvent({
-      address: config.address,
-      event: parseAbiItem(config.abi),
-      onLogs: async (logs) => {
-        await handleLogs(logs, config.name);
-      },
-    });
-  }
+  // Poll for new events every 15 seconds instead of relying on watchEvent
+  // (public RPCs don't support WebSocket subscriptions reliably)
+  const POLL_INTERVAL = 15000;
+  console.log(`🔄 Polling for new events every ${POLL_INTERVAL / 1000}s...`);
+
+  setInterval(async () => {
+    try {
+      const latestBlock = await client.getBlockNumber();
+      const lastProcessed = await redisClient.get(lastBlockKey);
+      const fromBlock = lastProcessed
+        ? parseInt(lastProcessed) + 1
+        : startBlock;
+
+      if (fromBlock >= Number(latestBlock)) return; // No new blocks
+
+      for (const config of eventConfigs) {
+        try {
+          const logs = await getLogsChunked(
+            config,
+            fromBlock,
+            Number(latestBlock),
+          );
+          if (logs.length > 0) {
+            console.log(`📥 Found ${logs.length} new ${config.name} events.`);
+            await handleLogs(logs, config.name);
+          }
+        } catch (e) {
+          console.error(`Poll error ${config.name}: ${e.message}`);
+        }
+      }
+      await redisClient.set(lastBlockKey, latestBlock.toString());
+    } catch (e) {
+      console.error("Poll cycle error:", e.message);
+    }
+  }, POLL_INTERVAL);
 }
 
 async function handleLogs(logs, eventName) {
