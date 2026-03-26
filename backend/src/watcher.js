@@ -250,9 +250,12 @@ async function watchEvents() {
   // Poll for new events every 15 seconds instead of relying on watchEvent
   // (public RPCs don't support WebSocket subscriptions reliably)
   const POLL_INTERVAL = 15000;
+  let isPolling = false;
   console.log(`🔄 Polling for new events every ${POLL_INTERVAL / 1000}s...`);
 
   setInterval(async () => {
+    if (isPolling) return; // Skip if previous poll is still running
+    isPolling = true;
     try {
       const latestBlock = await client.getBlockNumber();
       const lastProcessed = await redisClient.get(lastBlockKey);
@@ -280,6 +283,8 @@ async function watchEvents() {
       await redisClient.set(lastBlockKey, latestBlock.toString());
     } catch (e) {
       console.error("Poll cycle error:", e.message);
+    } finally {
+      isPolling = false;
     }
   }, POLL_INTERVAL);
 }
