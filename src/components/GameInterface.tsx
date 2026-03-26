@@ -285,32 +285,66 @@ export default function GameInterface() {
           >
             <div className="text-[10px] uppercase tracking-widest opacity-40 mb-1 flex items-center justify-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-              {selectedNumber !== null &&
-              !isPracticeMode &&
-              digitBalances[selectedNumber] > 0
-                ? `Winner Balance (${selectedNumber})`
-                : "Real Cash Wallet"}
+              Total Playable Balance
             </div>
             <div className={`text-2xl md:text-3xl font-black text-yellow-400`}>
-              {selectedNumber !== null &&
-              !isPracticeMode &&
-              digitBalances[selectedNumber] > 0
-                ? Number(
-                    formatUnits(digitBalances[selectedNumber], 18),
-                  ).toFixed(2)
-                : Number(formatUnits(cashBal, 18)).toFixed(2)}{" "}
+              {Number(
+                formatUnits(
+                  cashBal +
+                    digitBalances.reduce(
+                      (a: bigint, b: bigint) => a + b,
+                      BigInt(0),
+                    ),
+                  18,
+                ),
+              ).toFixed(2)}{" "}
               <span className="text-xs font-normal opacity-50">USDT</span>
             </div>
-            <div className="mt-2 text-[8px] font-black text-yellow-500 uppercase tracking-widest border border-yellow-500/20 py-1 rounded-lg">
-              {selectedNumber !== null &&
-              !isPracticeMode &&
-              digitBalances[selectedNumber] > 0
-                ? "USING WINNER BALANCE"
-                : "REAL CASH VERIFIED"}
+            <div className="mt-2 text-[8px] font-black text-yellow-500/60 uppercase tracking-widest">
+              Cash: {Number(formatUnits(cashBal, 18)).toFixed(2)} + Digit Wins:{" "}
+              {Number(
+                formatUnits(
+                  digitBalances.reduce(
+                    (a: bigint, b: bigint) => a + b,
+                    BigInt(0),
+                  ),
+                  18,
+                ),
+              ).toFixed(2)}
             </div>
           </motion.div>
         )}
       </div>
+
+      {/* Digit Balance Cards */}
+      {isCashPlayer &&
+        !isPracticeMode &&
+        digitBalances.some((d: bigint) => d > BigInt(0)) && (
+          <div className="flex flex-wrap gap-2 justify-center">
+            {digitBalances.map((bal: bigint, idx: number) =>
+              bal > BigInt(0) ? (
+                <motion.div
+                  key={idx}
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  onClick={() => setSelectedNumber(idx)}
+                  className={`px-4 py-2 rounded-xl border cursor-pointer transition-all ${
+                    selectedNumber === idx
+                      ? "bg-yellow-500/20 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]"
+                      : "bg-white/5 border-white/10 hover:border-yellow-500/50"
+                  }`}
+                >
+                  <div className="text-[9px] text-gray-400 uppercase font-black">
+                    Digit {idx}
+                  </div>
+                  <div className="text-sm font-black text-yellow-400">
+                    {Number(formatUnits(bal, 18)).toFixed(2)}
+                  </div>
+                </motion.div>
+              ) : null,
+            )}
+          </div>
+        )}
 
       {/* --- FIXED CIRCLE SECTION --- */}
       <div className="flex justify-center items-center py-6 md:py-10">
