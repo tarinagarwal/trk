@@ -342,7 +342,9 @@ export default function ReferralPage() {
   const totalWinnerIncomeVal: string = formatUnits(wIncomeVal, 18);
   const totalPracticeIncomeVal: string = formatUnits(pIncomeVal, 18);
 
-  const totalTeamCount = directReferralCount;
+  const totalTeamCount =
+    Object.values(networkStats).reduce((a, b) => a + b.count, 0) ||
+    directReferralCount;
   const isBasicActivated = totalDepositVal >= BigInt(10) * BigInt(10 ** 18);
   const isProActivated = cumulativeDeposit >= BigInt(100) * BigInt(10 ** 18);
 
@@ -409,6 +411,19 @@ export default function ReferralPage() {
         const data = await res.json();
         if (!data.success || !data.allMembers || data.allMembers.length === 0)
           return;
+
+        // Populate network stats from backend levels data
+        if (data.levels && !cancelled) {
+          const stats: { [lvl: number]: { count: number; bonus: bigint } } = {};
+          for (const [lvl, info] of Object.entries(data.levels)) {
+            const lvlInfo = info as any;
+            stats[Number(lvl)] = {
+              count: lvlInfo.count,
+              bonus: BigInt(lvlInfo.bonus),
+            };
+          }
+          setNetworkStats(stats);
+        }
 
         const calls = data.allMembers.map((member: string) =>
           publicClient!.readContract({
