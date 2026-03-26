@@ -724,11 +724,8 @@ function HistoryItem({
               {isWin ? "Paid Out" : "Cashback"}
             </div>
             {isWin && (
-              <div className="flex flex-col text-[8px] text-gray-500 font-bold uppercase mt-1">
-                <span>8X: {formatUnits(wonAmount * BigInt(8), 18)} USDT</span>
-                <span className="text-[7px] text-gray-600">
-                  2X Wallet + 6X Reinvest
-                </span>
+              <div className="text-[8px] text-gray-500 font-bold uppercase mt-1">
+                8X Reward: {formatUnits(wonAmount * BigInt(8), 18)} USDT
               </div>
             )}
           </div>
