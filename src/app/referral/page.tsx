@@ -610,11 +610,15 @@ export default function ReferralPage() {
                     ? practiceArrayFromContract[i] ?? BigInt(0)
                     : BigInt(0);
 
-                // For testing clarity, use live contract-backed Level 1 count and keep deeper counts neutral.
-                const stats =
-                  i === 0
-                    ? { count: directReferrals.length, bonus: BigInt(0) }
-                    : { count: 0, bonus: BigInt(0) };
+                // Use networkStats from backend team API (covers all 15 levels)
+                const stats = networkStats[i + 1]
+                  ? {
+                      count: networkStats[i + 1].count,
+                      bonus: networkStats[i + 1].bonus,
+                    }
+                  : i === 0
+                  ? { count: directReferrals.length, bonus: BigInt(0) }
+                  : { count: 0, bonus: BigInt(0) };
 
                 // registration rewards (from synced events).
                 // Priority: Use backend synced data (covers 100 levels) or fallback to contract (covers 15)
