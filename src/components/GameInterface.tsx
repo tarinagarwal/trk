@@ -725,21 +725,9 @@ function HistoryItem({
             </div>
             {isWin && (
               <div className="flex flex-col text-[8px] text-gray-500 font-bold uppercase mt-1">
-                <span>
-                  {Number(config?.game.winCashoutMult ?? 2)}X:{" "}
-                  {formatUnits(
-                    wonAmount * (config?.game.winCashoutMult ?? BigInt(2)),
-                    18,
-                  )}{" "}
-                  (Wallet)
-                </span>
-                <span>
-                  {Number(config?.game.winReinvestMult ?? 6)}X:{" "}
-                  {formatUnits(
-                    wonAmount * (config?.game.winReinvestMult ?? BigInt(6)),
-                    18,
-                  )}{" "}
-                  (Reinvest)
+                <span>8X: {formatUnits(wonAmount * BigInt(8), 18)} USDT</span>
+                <span className="text-[7px] text-gray-600">
+                  2X Wallet + 6X Reinvest
                 </span>
               </div>
             )}
