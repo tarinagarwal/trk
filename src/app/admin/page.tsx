@@ -116,6 +116,24 @@ export default function ComprehensiveAdminPanel() {
     ? (walletsData as any).few ?? (walletsData as any[])?.[1]
     : null;
 
+  const { data: fewWalletInfo } = useReadContract({
+    address: TRK_GAME_ADDRESS,
+    abi: TRKGameABI.abi,
+    functionName: "getUserInfo",
+    args: fewWalletAddress ? [fewWalletAddress] : undefined,
+    query: { enabled: !!fewWalletAddress, refetchInterval: 30000 },
+  });
+  const fewWalletBalance = fewWalletInfo
+    ? Number(
+        formatUnits(
+          (fewWalletInfo as any)?.walletBalance ??
+            (fewWalletInfo as any[])?.[3] ??
+            BigInt(0),
+          18,
+        ),
+      ).toFixed(2)
+    : "0.00";
+
   // Round IDs from Engine
   const { data: currentPracticeId } = useReadContract({
     address: TRK_ADDRESSES.GAME as `0x${string}`,
@@ -485,6 +503,7 @@ export default function ComprehensiveAdminPanel() {
                 isPending={isPending}
                 poolStatsRaw={poolStatsRaw}
                 fewWalletAddress={fewWalletAddress}
+                fewWalletBalance={fewWalletBalance}
               />
             )}
             {activeTab === "users" && <UsersTab />}
@@ -541,6 +560,7 @@ function OverviewTab({
   isPending,
   poolStatsRaw,
   fewWalletAddress,
+  fewWalletBalance,
 }: any) {
   // stats and settings are plain JS objects from wagmi (named struct)
   const users =
@@ -675,6 +695,12 @@ function OverviewTab({
           value={poolStats.fewPool}
           sub="USDT (Cumulative)"
           color="text-cyan-400"
+        />
+        <QuickStat
+          label="FEW Wallet Balance"
+          value={fewWalletBalance ?? "0.00"}
+          sub="USDT (Withdrawable)"
+          color="text-emerald-400"
         />
         <QuickStat
           label="Referral Distributed"
