@@ -16,6 +16,7 @@ import TRKRouterABI from "../abis/TRKRouter.json";
 import TRKRegistryABI from "../abis/TRKUserRegistry.json";
 import TRKTreasuryABI from "../abis/TRKTreasury.json";
 import USDTABI from "../abis/USDT.json";
+import TRKCashbackEngineABI from "../abis/TRKCashbackEngine.json";
 import { API_ENDPOINTS } from "../config/backend";
 import { useEcosystemConfig } from "./EcosystemConfig";
 
@@ -562,6 +563,7 @@ export default function Dashboard() {
               systemSettings={systemSettings}
               writeContract={writeCashback}
               isPending={isCashbackPending}
+              userAddress={address}
             />
             <WinnerBalancesCard digitBalances={digitBalances} />
           </div>
@@ -794,6 +796,14 @@ function CashVerificationCard({
         >
           • L4-L15 Income {isPro ? "✅" : "🔒"}
         </span>
+        <span
+          className={cn(
+            "text-[8px] font-black uppercase",
+            isPro ? "text-yellow-400" : "text-gray-500",
+          )}
+        >
+          • Practice→Cash Eligible {isPro ? "✅" : "🔒 Need $100"}
+        </span>
       </div>
 
       {needsAction && (
@@ -945,6 +955,7 @@ function CashbackStatusCard({
   systemSettings,
   writeContract,
   isPending,
+  userAddress,
 }: {
   isNetProfit: boolean;
   totalBets?: bigint;
@@ -956,13 +967,32 @@ function CashbackStatusCard({
   systemSettings?: any;
   writeContract?: any;
   isPending?: boolean;
+  userAddress?: string;
 }) {
   const config = useEcosystemConfig();
+
+  // Read lastDailyClaim from CashbackEngine
+  const { data: lastClaimData } = useReadContract({
+    address: TRK_ADDRESSES.CASHBACK as `0x${string}`,
+    abi: TRKCashbackEngineABI.abi,
+    functionName: "lastDailyClaim",
+    args: userAddress ? [userAddress as `0x${string}`] : undefined,
+    query: { enabled: !!userAddress, refetchInterval: 30000 },
+  });
+
+  const lastClaimDay = lastClaimData ? Number(lastClaimData) : 0;
+  const todayDay = Math.floor(Date.now() / 1000 / 86400);
+  const alreadyClaimedToday = lastClaimDay >= todayDay;
+
+  // Next claim time: start of next UTC day
+  const nextClaimTs = (todayDay + 1) * 86400 * 1000;
+  const msUntilNext = nextClaimTs - Date.now();
+  const hoursLeft = Math.floor(msUntilNext / 3600000);
+  const minsLeft = Math.floor((msUntilNext % 3600000) / 60000);
 
   // Get cashback settings from systemSettings
   let lossThreshold = BigInt(100) * BigInt(10 ** 18);
   let maxDailyCashback = BigInt(10) * BigInt(10 ** 18);
-  let cashbackRateBps = 50; // 0.5% default
 
   if (systemSettings && Array.isArray(systemSettings)) {
     const cashbackParams = systemSettings[2] as any[];
@@ -1005,8 +1035,10 @@ function CashbackStatusCard({
   const maxCapUSDT = depositUSDT * multiplier;
   const maxDailyUSDT = Number(formatUnits(maxDailyCashback, 18));
 
-  // Daily estimate: deposit * 0.5% capped at maxDaily
+  // Daily estimate: deposit * 0.5% capped at maxDaily ($10)
   const dailyEstimate = Math.min(depositUSDT * 0.005, maxDailyUSDT);
+  // ROI pool: 50% of daily estimate distributed to 15 levels
+  const roiPool = dailyEstimate * 0.5;
 
   const progress = Math.min((lossUSDT / thresholdUSDT) * 100, 100);
   const isEligible = netLoss >= lossThreshold;
@@ -1034,6 +1066,8 @@ function CashbackStatusCard({
           className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
             capReached
               ? "bg-red-500/20 text-red-400 border border-red-500/30"
+              : alreadyClaimedToday
+              ? "bg-gray-500/20 text-gray-400 border border-gray-500/30"
               : isEligible
               ? "bg-green-500/20 text-green-400 border border-green-500/30"
               : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
@@ -1041,6 +1075,8 @@ function CashbackStatusCard({
         >
           {capReached
             ? "⛔ Cap Reached"
+            : alreadyClaimedToday
+            ? "✅ Claimed Today"
             : isEligible
             ? "● Eligible"
             : "○ Not Yet"}
@@ -1077,7 +1113,9 @@ function CashbackStatusCard({
           <div className="text-sm font-black text-blue-400">
             ${dailyEstimate.toFixed(2)}
           </div>
-          <div className="text-[7px] text-gray-600">USDT/day</div>
+          <div className="text-[7px] text-gray-600">
+            0.5% net loss / max $10
+          </div>
         </div>
         <div className="bg-black/30 rounded-xl p-3 text-center">
           <div className="text-[8px] text-gray-500 uppercase font-bold mb-1">
@@ -1087,7 +1125,7 @@ function CashbackStatusCard({
             {multiplier}X
           </div>
           <div className="text-[7px] text-gray-600">
-            {multiplier * 100}% cap
+            {multiplier * 100}% income cap
           </div>
         </div>
         <div className="bg-black/30 rounded-xl p-3 text-center">
@@ -1103,14 +1141,24 @@ function CashbackStatusCard({
         </div>
       </div>
 
+      {/* ROI Distribution Info */}
+      <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 mb-4 text-[9px] text-purple-300 font-bold">
+        50% ROI Pool: ${roiPool.toFixed(2)} distributed across 15 upline levels
+        on each claim
+      </div>
+
       {/* Claim Button */}
-      {isEligible && !capReached && writeContract && (
+      {isEligible && !capReached && (
         <button
           onClick={handleClaim}
-          disabled={isPending}
+          disabled={isPending || alreadyClaimedToday}
           className="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-500 hover:to-cyan-500 transition-all disabled:opacity-50 shadow-lg shadow-blue-900/30"
         >
-          {isPending ? "CLAIMING..." : "💰 CLAIM DAILY CASHBACK"}
+          {isPending
+            ? "CLAIMING..."
+            : alreadyClaimedToday
+            ? `✅ Claimed — Next in ${hoursLeft}h ${minsLeft}m`
+            : "💰 CLAIM DAILY CASHBACK"}
         </button>
       )}
       {!isEligible && (
