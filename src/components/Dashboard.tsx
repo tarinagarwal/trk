@@ -1015,7 +1015,7 @@ function CashbackStatusCard({
   const handleClaim = () => {
     if (!writeContract) return;
     writeContract({
-      address: TRK_GAME_ADDRESS as `0x${string}`,
+      address: TRK_ADDRESSES.ROUTER as `0x${string}`,
       abi: TRKRouterABI.abi,
       functionName: "claimDailyCashback",
     });
