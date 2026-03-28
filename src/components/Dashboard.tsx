@@ -549,7 +549,13 @@ export default function Dashboard() {
               totalUsers={totalUsers}
               systemSettings={systemSettings}
             />
-            <CashbackStatusCard isNetProfit={isNetProfit} />
+            <CashbackStatusCard
+              isNetProfit={isNetProfit}
+              totalBets={totalSpent}
+              totalWins={totalWins}
+              cashbackIncome={dataList?.cashbackIncome ?? BigInt(0)}
+              systemSettings={systemSettings}
+            />
             <WinnerBalancesCard digitBalances={digitBalances} />
           </div>
 
@@ -921,32 +927,90 @@ function BoosterStatusCard({
   );
 }
 
-function CashbackStatusCard({ isNetProfit }: { isNetProfit: boolean }) {
+function CashbackStatusCard({
+  isNetProfit,
+  totalBets,
+  totalWins,
+  cashbackIncome,
+  systemSettings,
+}: {
+  isNetProfit: boolean;
+  totalBets?: bigint;
+  totalWins?: bigint;
+  cashbackIncome?: bigint;
+  systemSettings?: any;
+}) {
   const isActive = !isNetProfit;
-  const status = isActive ? "ACTIVATED" : "DEACTIVATED";
-  const color = isActive
-    ? "text-green-400 border-green-500/30 bg-green-500/10"
-    : "text-red-400 border-red-500/30 bg-red-500/10";
-  const desc = isActive
-    ? "Receiving 0.5% Cashback on Net Losses"
-    : "Profit > Loss (No Cashback)";
+
+  // Get loss threshold from systemSettings cashbackParams[2]
+  let lossThreshold = BigInt(100) * BigInt(10 ** 18); // default 100 USDT
+  if (systemSettings && Array.isArray(systemSettings)) {
+    const cashbackParams = systemSettings[2] as any[];
+    if (cashbackParams?.[2]) lossThreshold = BigInt(cashbackParams[2]);
+  } else if (systemSettings?.cashbackParams?.[2]) {
+    lossThreshold = BigInt(systemSettings.cashbackParams[2]);
+  }
+
+  const bets = totalBets ?? BigInt(0);
+  const wins = totalWins ?? BigInt(0);
+  const netLoss = bets > wins ? bets - wins : BigInt(0);
+  const cashback = cashbackIncome ?? BigInt(0);
+
+  const lossUSDT = Number(formatUnits(netLoss, 18));
+  const thresholdUSDT = Number(formatUnits(lossThreshold, 18));
+  const cashbackUSDT = Number(formatUnits(cashback, 18));
+  const progress = Math.min((lossUSDT / thresholdUSDT) * 100, 100);
+  const isEligible = netLoss >= lossThreshold;
 
   return (
     <motion.div
       variants={itemVar}
-      className={cn(
-        "p-6 rounded-2xl border flex flex-col justify-center items-center text-center backdrop-blur-md",
-        color,
-        "col-span-1 md:col-span-2 shadow-lg",
-      )}
+      className="p-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 backdrop-blur-md col-span-1 md:col-span-2"
     >
-      <span className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">
-        0.5% Loss Cashback
-      </span>
-      <span className="text-3xl font-black tracking-wider">{status}</span>
-      <span className="text-[10px] uppercase font-bold mt-2 opacity-80">
-        {desc}
-      </span>
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+          Daily Cashback Meter
+        </span>
+        <span
+          className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+            isEligible
+              ? "bg-green-500/20 text-green-400 border border-green-500/30"
+              : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+          }`}
+        >
+          {isEligible ? "● Eligible" : "○ Not Yet"}
+        </span>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-3">
+        <div className="flex justify-between text-[10px] text-gray-500 mb-1 font-mono">
+          <span>Net Loss: ${lossUSDT.toFixed(2)}</span>
+          <span>Threshold: ${thresholdUSDT.toFixed(0)}</span>
+        </div>
+        <div className="w-full bg-white/5 rounded-full h-2.5 overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className={`h-full rounded-full ${
+              isEligible ? "bg-green-500" : "bg-blue-500"
+            }`}
+          />
+        </div>
+        <div className="text-[9px] text-gray-600 mt-1 font-mono">
+          {progress.toFixed(1)}% of threshold reached
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center text-[10px] font-bold">
+        <span className="text-gray-500 uppercase tracking-widest">
+          Total Cashback Received
+        </span>
+        <span className="text-blue-400 font-mono">
+          ${cashbackUSDT.toFixed(2)} USDT
+        </span>
+      </div>
     </motion.div>
   );
 }
