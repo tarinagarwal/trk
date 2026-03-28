@@ -96,6 +96,8 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
+  const { writeContract: writeCashback, isPending: isCashbackPending } =
+    useWriteContract();
   const [liveActiveDirects, setLiveActiveDirects] = useState<number | null>(
     null,
   );
@@ -554,7 +556,12 @@ export default function Dashboard() {
               totalBets={totalSpent}
               totalWins={totalWins}
               cashbackIncome={dataList?.cashbackIncome ?? BigInt(0)}
+              totalDeposit={totalDeposit}
+              activeDirects={activeDirectsDisplay}
+              totalUsers={totalUsers}
               systemSettings={systemSettings}
+              writeContract={writeCashback}
+              isPending={isCashbackPending}
             />
             <WinnerBalancesCard digitBalances={digitBalances} />
           </div>
@@ -932,35 +939,87 @@ function CashbackStatusCard({
   totalBets,
   totalWins,
   cashbackIncome,
+  totalDeposit,
+  activeDirects,
+  totalUsers,
   systemSettings,
+  writeContract,
+  isPending,
 }: {
   isNetProfit: boolean;
   totalBets?: bigint;
   totalWins?: bigint;
   cashbackIncome?: bigint;
+  totalDeposit?: bigint;
+  activeDirects?: number;
+  totalUsers?: bigint;
   systemSettings?: any;
+  writeContract?: any;
+  isPending?: boolean;
 }) {
-  const isActive = !isNetProfit;
+  const config = useEcosystemConfig();
 
-  // Get loss threshold from systemSettings cashbackParams[2]
-  let lossThreshold = BigInt(100) * BigInt(10 ** 18); // default 100 USDT
+  // Get cashback settings from systemSettings
+  let lossThreshold = BigInt(100) * BigInt(10 ** 18);
+  let maxDailyCashback = BigInt(10) * BigInt(10 ** 18);
+  let cashbackRateBps = 50; // 0.5% default
+
   if (systemSettings && Array.isArray(systemSettings)) {
     const cashbackParams = systemSettings[2] as any[];
     if (cashbackParams?.[2]) lossThreshold = BigInt(cashbackParams[2]);
-  } else if (systemSettings?.cashbackParams?.[2]) {
-    lossThreshold = BigInt(systemSettings.cashbackParams[2]);
+    if (cashbackParams?.[5]) maxDailyCashback = BigInt(cashbackParams[5]);
+  }
+
+  // Get booster multiplier from caps
+  const capsBefore = config?.caps.before || [];
+  const capsAfter = config?.caps.after || [];
+  const threshold = config?.caps.phaseThreshold || 10000;
+  const isPostThreshold = Number(totalUsers ?? 0) >= threshold;
+  const activeCaps = isPostThreshold ? capsAfter : capsBefore;
+  let multiplier = 1;
+  const sortedCaps = [...(activeCaps || [])]
+    .filter(Boolean)
+    .sort(
+      (a: any, b: any) =>
+        Number(b.directs ?? b[0] ?? 0) - Number(a.directs ?? a[0] ?? 0),
+    );
+  for (const c of sortedCaps as any[]) {
+    const d = Number(c.directs ?? c[0] ?? 0);
+    const m = Number(c.multiplier ?? c[1] ?? 1);
+    if ((activeDirects ?? 0) >= d) {
+      multiplier = m;
+      break;
+    }
   }
 
   const bets = totalBets ?? BigInt(0);
   const wins = totalWins ?? BigInt(0);
   const netLoss = bets > wins ? bets - wins : BigInt(0);
   const cashback = cashbackIncome ?? BigInt(0);
+  const deposit = totalDeposit ?? BigInt(0);
 
   const lossUSDT = Number(formatUnits(netLoss, 18));
   const thresholdUSDT = Number(formatUnits(lossThreshold, 18));
   const cashbackUSDT = Number(formatUnits(cashback, 18));
+  const depositUSDT = Number(formatUnits(deposit, 18));
+  const maxCapUSDT = depositUSDT * multiplier;
+  const maxDailyUSDT = Number(formatUnits(maxDailyCashback, 18));
+
+  // Daily estimate: deposit * 0.5% capped at maxDaily
+  const dailyEstimate = Math.min(depositUSDT * 0.005, maxDailyUSDT);
+
   const progress = Math.min((lossUSDT / thresholdUSDT) * 100, 100);
   const isEligible = netLoss >= lossThreshold;
+  const capReached = cashbackUSDT >= maxCapUSDT && maxCapUSDT > 0;
+
+  const handleClaim = () => {
+    if (!writeContract) return;
+    writeContract({
+      address: TRK_GAME_ADDRESS as `0x${string}`,
+      abi: TRKRouterABI.abi,
+      functionName: "claimDailyCashback",
+    });
+  };
 
   return (
     <motion.div
@@ -973,17 +1032,23 @@ function CashbackStatusCard({
         </span>
         <span
           className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-            isEligible
+            capReached
+              ? "bg-red-500/20 text-red-400 border border-red-500/30"
+              : isEligible
               ? "bg-green-500/20 text-green-400 border border-green-500/30"
               : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
           }`}
         >
-          {isEligible ? "● Eligible" : "○ Not Yet"}
+          {capReached
+            ? "⛔ Cap Reached"
+            : isEligible
+            ? "● Eligible"
+            : "○ Not Yet"}
         </span>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-3">
+      {/* Loss Progress Bar */}
+      <div className="mb-4">
         <div className="flex justify-between text-[10px] text-gray-500 mb-1 font-mono">
           <span>Net Loss: ${lossUSDT.toFixed(2)}</span>
           <span>Threshold: ${thresholdUSDT.toFixed(0)}</span>
@@ -1003,14 +1068,56 @@ function CashbackStatusCard({
         </div>
       </div>
 
-      <div className="flex justify-between items-center text-[10px] font-bold">
-        <span className="text-gray-500 uppercase tracking-widest">
-          Total Cashback Received
-        </span>
-        <span className="text-blue-400 font-mono">
-          ${cashbackUSDT.toFixed(2)} USDT
-        </span>
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-black/30 rounded-xl p-3 text-center">
+          <div className="text-[8px] text-gray-500 uppercase font-bold mb-1">
+            Daily Estimate
+          </div>
+          <div className="text-sm font-black text-blue-400">
+            ${dailyEstimate.toFixed(2)}
+          </div>
+          <div className="text-[7px] text-gray-600">USDT/day</div>
+        </div>
+        <div className="bg-black/30 rounded-xl p-3 text-center">
+          <div className="text-[8px] text-gray-500 uppercase font-bold mb-1">
+            Booster
+          </div>
+          <div className="text-sm font-black text-purple-400">
+            {multiplier}X
+          </div>
+          <div className="text-[7px] text-gray-600">
+            {multiplier * 100}% cap
+          </div>
+        </div>
+        <div className="bg-black/30 rounded-xl p-3 text-center">
+          <div className="text-[8px] text-gray-500 uppercase font-bold mb-1">
+            Total Received
+          </div>
+          <div className="text-sm font-black text-green-400">
+            ${cashbackUSDT.toFixed(2)}
+          </div>
+          <div className="text-[7px] text-gray-600">
+            / ${maxCapUSDT.toFixed(0)} cap
+          </div>
+        </div>
       </div>
+
+      {/* Claim Button */}
+      {isEligible && !capReached && writeContract && (
+        <button
+          onClick={handleClaim}
+          disabled={isPending}
+          className="w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-500 hover:to-cyan-500 transition-all disabled:opacity-50 shadow-lg shadow-blue-900/30"
+        >
+          {isPending ? "CLAIMING..." : "💰 CLAIM DAILY CASHBACK"}
+        </button>
+      )}
+      {!isEligible && (
+        <div className="text-center text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+          Lose ${(thresholdUSDT - lossUSDT).toFixed(2)} more to unlock cashback
+        </div>
+      )}
     </motion.div>
   );
 }
